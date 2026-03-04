@@ -4,7 +4,7 @@ from lexer import reset_lexer
 from test_lexer import test_lexer
 from sintac import calculate_levels, parse_code, parser
 
-ruta = "" # La utilizaremos para almacenar la ruta del archivo
+ruta = "" # La utilizaremos para almacenar la ruta deal archivo
 
 # Crear un archivo nuevo
 def nuevo(root, mensaje, texto):
