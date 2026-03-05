@@ -1,144 +1,187 @@
-# file_operations.py
-from tkinter import END, filedialog as FileDialog, ttk, Frame, Text
+from tkinter import END, filedialog as FileDialog, ttk, Text
 from io import open
 from lexer import reset_lexer
 from test_lexer import test_lexer
 from sintac import calculate_levels, parse_code
 from tab_widget import TabWithCloseButton
-from widgets import LineNumbers  # Solo importar LineNumbers
 
-ruta_archivos = {}  # guarda la ruta de cada pestaña
+ruta_archivos = {}
 
 # ============================================
 # OBTENER EDITOR ACTIVO
 # ============================================
+
 def obtener_texto_actual(editor_tabs):
-    """Obtiene el widget Text de la pestaña activa"""
+
     tab_id = editor_tabs.select()
+
     if not tab_id:
         return None
 
     tab = editor_tabs.nametowidget(tab_id)
 
-    def buscar_text(widget):
+    def buscar(widget):
+
         for child in widget.winfo_children():
+
             if isinstance(child, Text):
                 return child
-            resultado = buscar_text(child)
+
+            resultado = buscar(child)
+
             if resultado:
                 return resultado
+
         return None
 
-    return buscar_text(tab)
+    return buscar(tab)
+
 
 # ============================================
-# CREAR NUEVA PESTAÑA
+# CREAR PESTAÑA
 # ============================================
+
 def crear_pestana(editor_tabs, nombre="Nuevo archivo", contenido="", actualizar=None):
-    """Crear una nueva pestaña simple"""
     tab = TabWithCloseButton(editor_tabs, nombre, contenido, actualizar)
     editor_tabs.select(tab.main_frame)
     
     if actualizar:
         tab.main_frame.after(100, actualizar)
     
+    # Forzar un redibujado de los números de línea después de crear la pestaña
+    tab.main_frame.after(3, lambda: tab.line_numbers.redraw() or tab.line_numbers.redraw())
+    
     return tab.get_text_widget()
 
+
 # ============================================
-# NUEVO ARCHIVO
+# NUEVO
 # ============================================
+
 def nuevo(editor_tabs, mensaje, actualizar=None):
+
     mensaje.set("Nuevo archivo")
+
     crear_pestana(editor_tabs, "Nuevo archivo", "", actualizar)
 
+
 # ============================================
-# ABRIR ARCHIVO
+# ABRIR
 # ============================================
+
 def abrir(editor_tabs, mensaje):
+
     ruta = FileDialog.askopenfilename(
         initialdir=".",
-        filetypes=(("Archivos de texto", "*.txt"),),
-        title="Abrir archivo")
+        title="Abrir archivo",
+        filetypes=(("Archivos de texto", "*.txt"), ("Todos", "*.*"))
+    )
 
-    if ruta != "":
-        archivo = open(ruta, 'r', encoding='utf-8')
+    if not ruta:
+        return
+
+    with open(ruta, 'r', encoding='utf-8') as archivo:
         contenido = archivo.read()
-        archivo.close()
 
-        nombre = ruta.split("/")[-1]
-        texto = crear_pestana(editor_tabs, nombre, contenido)
+    nombre = ruta.split("/")[-1]
 
-        tab = editor_tabs.select()
-        ruta_archivos[str(tab)] = ruta
+    texto = crear_pestana(editor_tabs, nombre, contenido)
 
-        mensaje.set("Archivo abierto")
+    tab = editor_tabs.select()
+
+    ruta_archivos[str(tab)] = ruta
+
+    mensaje.set("Archivo abierto")
+
 
 # ============================================
 # GUARDAR
 # ============================================
+
 def guardar(editor_tabs, mensaje):
+
     texto = obtener_texto_actual(editor_tabs)
+
     if not texto:
         return
 
     tab = editor_tabs.select()
-    ruta = ruta_archivos.get(str(tab), "")
 
-    contenido = texto.get(1.0, 'end-1c')
+    ruta = ruta_archivos.get(str(tab))
 
-    if ruta != "":
-        archivo = open(ruta, 'w+', encoding='utf-8')
-        archivo.write(contenido)
-        archivo.close()
+    contenido = texto.get("1.0", "end-1c")
+
+    if ruta:
+
+        with open(ruta, 'w', encoding='utf-8') as archivo:
+            archivo.write(contenido)
+
         mensaje.set("Archivo guardado")
+
     else:
+
         guardar_como(editor_tabs, mensaje)
+
 
 # ============================================
 # GUARDAR COMO
 # ============================================
+
 def guardar_como(editor_tabs, mensaje):
+
     texto = obtener_texto_actual(editor_tabs)
+
     if not texto:
         return
 
-    # 1. Pedimos la RUTA (no el objeto archivo)
     ruta = FileDialog.asksaveasfilename(
         title="Guardar archivo",
         defaultextension=".txt",
-        filetypes=(("Archivos de texto", "*.txt"), ("Todos los archivos", "*.*"))
+        filetypes=(("Archivos de texto", "*.txt"), ("Todos", "*.*"))
     )
 
-    # 2. Si el usuario no canceló (ruta no está vacía)
-    if ruta:
-        try:
-            contenido = texto.get(1.0, 'end-1c')
-            # Aquí es donde aplicamos el encoding correctamente
-            with open(ruta, 'w', encoding='utf-8') as archivo:
-                archivo.write(contenido)
+    if not ruta:
+        return
 
-            tab = editor_tabs.select()
-            ruta_archivos[str(tab)] = ruta
+    contenido = texto.get("1.0", "end-1c")
 
-            nombre = ruta.split("/")[-1]
-            editor_tabs.tab(tab, text=nombre)
+    with open(ruta, 'w', encoding='utf-8') as archivo:
+        archivo.write(contenido)
 
-            mensaje.set("Archivo guardado exitosamente")
-        except Exception as e:
-            mensaje.set(f"Error al guardar: {e}")
+    tab = editor_tabs.select()
+
+    ruta_archivos[str(tab)] = ruta
+
+    nombre = ruta.split("/")[-1]
+
+    editor_tabs.tab(tab, text=nombre)
+
+    mensaje.set("Archivo guardado correctamente")
+
 
 # ============================================
-# MOSTRAR MENSAJES EN ROJO
+# MENSAJES EN ROJO
 # ============================================
+
 def mostrar_mensaje_en_rojo(pantalla_errores, mensaje):
-    pantalla_errores.config(state='normal', fg='red')
-    pantalla_errores.insert('end', mensaje + '\n')
+
+    pantalla_errores.config(state='normal')
+
+    pantalla_errores.insert(END, mensaje + '\n')
+
+    pantalla_errores.tag_add("error", "end-2l", "end-1l")
+
+    pantalla_errores.tag_config("error", foreground="red")
+
     pantalla_errores.config(state='disabled')
-    pantalla_errores.see('end')
+
+    pantalla_errores.see(END)
+
 
 # ============================================
 # ANALISIS LEXICO
 # ============================================
+
 def run_command(editor_tabs, mensaje, frame_lexico,
                 pantalla_errores, frame_sintactico):
 
@@ -148,7 +191,7 @@ def run_command(editor_tabs, mensaje, frame_lexico,
         mensaje.set("No hay archivo abierto")
         return
 
-    input_text = texto.get(1.0, 'end-1c')
+    input_text = texto.get("1.0", "end-1c")
 
     mensaje.set("Ejecutando análisis léxico...")
 
@@ -157,51 +200,64 @@ def run_command(editor_tabs, mensaje, frame_lexico,
     for child in frame_lexico.winfo_children():
         child.destroy()
 
-    tree = ttk.Treeview(frame_lexico,
-                        columns=('Token', 'Lexema', 'Fila', 'Columna'),
-                        show='headings')
+    tree = ttk.Treeview(
+        frame_lexico,
+        columns=('Token', 'Lexema', 'Fila', 'Columna'),
+        show='headings'
+    )
 
     tree.heading('Token', text='Token')
     tree.heading('Lexema', text='Lexema')
     tree.heading('Fila', text='Fila')
     tree.heading('Columna', text='Columna')
 
-    tree.pack(fill='both', expand=True)
-
     tree.column('Token', width=150, anchor='center')
     tree.column('Lexema', width=150, anchor='center')
-    tree.column('Fila', width=50, anchor='center')
-    tree.column('Columna', width=50, anchor='center')
+    tree.column('Fila', width=60, anchor='center')
+    tree.column('Columna', width=60, anchor='center')
+
+    tree.pack(fill='both', expand=True)
 
     tokens, errors = test_lexer(input_text, source='gui')
 
-    if tokens:
-        for token in tokens:
-            token_data = (token.type, token.value,
-                          token.lineno, token.lexpos)
-            tree.insert('', 'end', values=token_data)
+    for token in tokens:
+        tree.insert(
+            '',
+            'end',
+            values=(token.type, token.value, token.lineno, token.lexpos)
+        )
 
     pantalla_errores.config(state='normal')
-    pantalla_errores.delete(1.0, END)
+    pantalla_errores.delete("1.0", END)
 
     if errors:
+
         for error in errors:
             mostrar_mensaje_en_rojo(pantalla_errores, error[3])
+
         mensaje.set("Error en análisis léxico")
-        pantalla_errores.config(state='disabled')
+
     else:
+
         mensaje.set("Análisis léxico completado")
-        pantalla_errores.config(state='disabled')
 
         texto_tokens = tokens_to_text(tokens)
-        run_syntax_analysis(mensaje, texto_tokens,
-                            frame_sintactico,
-                            pantalla_errores,
-                            tokens)
+
+        run_syntax_analysis(
+            mensaje,
+            texto_tokens,
+            frame_sintactico,
+            pantalla_errores,
+            tokens
+        )
+
+    pantalla_errores.config(state='disabled')
+
 
 # ============================================
 # ANALISIS SINTACTICO
 # ============================================
+
 def run_syntax_analysis(mensaje, texto,
                         frame_sintactico,
                         pantalla_errores,
@@ -212,80 +268,95 @@ def run_syntax_analysis(mensaje, texto,
     for child in frame_sintactico.winfo_children():
         child.destroy()
 
-    tree = ttk.Treeview(frame_sintactico,
-                        columns=('Nodo', 'Nivel'),
-                        show='headings')
+    tree = ttk.Treeview(
+        frame_sintactico,
+        columns=('Nodo', 'Nivel'),
+        show='headings'
+    )
 
     tree.heading('Nodo', text='Nodo')
     tree.heading('Nivel', text='Nivel')
 
-    tree.pack(fill='both', expand=True)
+    tree.column('Nodo', width=200)
+    tree.column('Nivel', width=100)
 
-    tree.column('Nodo', width=150, anchor='center')
-    tree.column('Nivel', width=150, anchor='center')
+    tree.pack(fill='both', expand=True)
 
     result, errors = parse_code(texto)
 
     if result:
+
         calculate_levels(result)
 
-        def add_nodes(tree, node, parent=''):
-            tree.insert(parent, 'end',
-                        text=str(node),
-                        values=(node.type, node.level))
-            for child in node.children:
-                add_nodes(tree, child, parent)
+        def add_nodes(node, parent=''):
 
-        add_nodes(tree, result)
+            item = tree.insert(
+                parent,
+                'end',
+                values=(node.type, node.level)
+            )
+
+            for child in node.children:
+                add_nodes(child, item)
+
+        add_nodes(result)
+
         mensaje.set("Análisis sintáctico completado")
+
     else:
+
         pantalla_errores.config(state='normal')
-        if errors:
-            for error in errors:
-                mostrar_mensaje_en_rojo(pantalla_errores, error)
+
+        for error in errors:
+            mostrar_mensaje_en_rojo(pantalla_errores, error)
+
         pantalla_errores.config(state='disabled')
+
         mensaje.set("Análisis sintáctico fallido")
 
+
 # ============================================
-# CONVERTIR TOKENS A TEXTO
+# TOKENS A TEXTO
 # ============================================
+
 def tokens_to_text(tokens):
+
     return ' '.join(str(token.value) for token in tokens)
 
+
 # ============================================
-# RESALTADO DE SINTAXIS
+# HIGHLIGHT SINTAXIS (VERSIÓN RÁPIDA)
 # ============================================
+
 def highlight_syntax(texto):
-    """Versión optimizada de highlight_syntax"""
-    if not texto or not texto.winfo_exists():
+
+    if not texto:
         return
-    
+
     keywords = ['int', 'float', 'if', 'else', 'for', 'while', 'do']
-    
-    try:
-        texto.tag_configure('keyword', foreground='blue')
-        texto.tag_configure('string', foreground='#ba6b2b')
-        texto.tag_configure('comment_line', foreground='green')
-        texto.tag_configure('comment_block', foreground='green')
-    except:
-        pass
-    
-    texto.tag_remove('keyword', '1.0', 'end')
-    texto.tag_remove('string', '1.0', 'end')
-    texto.tag_remove('comment_line', '1.0', 'end')
-    texto.tag_remove('comment_block', '1.0', 'end')
-    
+
+    texto.tag_remove("keyword", "1.0", END)
+
     for kw in keywords:
-        start = '1.0'
+
+        start = "1.0"
+
         while True:
-            start = texto.search(r'\y' + kw + r'\y', start, stopindex='end', regexp=True)
-            if not start:
+
+            pos = texto.search(
+                r'\y' + kw + r'\y',
+                start,
+                stopindex=END,
+                regexp=True
+            )
+
+            if not pos:
                 break
-            end = f"{start}+{len(kw)}c"
-            texto.tag_add('keyword', start, end)
+
+            end = f"{pos}+{len(kw)}c"
+
+            texto.tag_add("keyword", pos, end)
+
             start = end
 
-    texto.tag_configure('keyword', foreground='blue')
-    texto.tag_configure('string', foreground='#ba6b2b')
-    texto.tag_configure('comment_line', foreground='green')
-    texto.tag_configure('comment_block', foreground='green')
+    texto.tag_config("keyword", foreground="blue")
