@@ -14,7 +14,16 @@ def resize_image(image_path, width, height):
     images.append(resized_image)  # Mantener referencia global
     return resized_image
 
-def create_menu(root, mensaje, texto):
+def get_current_text(editor_tabs):
+    tab = editor_tabs.nametowidget(editor_tabs.select())
+    for widget in tab.winfo_children():
+        if isinstance(widget, tkinter.Frame):
+            for child in widget.winfo_children():
+                if isinstance(child, tkinter.Text):
+                    return child
+    return None
+
+def create_menu(root, mensaje, editor_tabs):
 
     # Rutas de las imagenes
     img_new_path = os.path.abspath("img/new.png")
@@ -53,22 +62,22 @@ def create_menu(root, mensaje, texto):
     filemenu = Menu(menubar, tearoff=0)
     filemenu.add_command(label="Nuevo", 
                          accelerator="Ctrl+N",
-                         command=lambda: nuevo(root, mensaje, texto),
+                         command=lambda: nuevo(editor_tabs, mensaje),
                          image=img_new,
                          compound=tkinter.LEFT)
     filemenu.add_command(label="Abrir", 
                          accelerator="Ctrl+O", 
-                         command=lambda: abrir(root, mensaje, texto),
+                         command=lambda: abrir(editor_tabs, mensaje),
                          image=img_open,
                          compound=tkinter.LEFT)
     filemenu.add_command(label="Guardar", 
                          accelerator="Ctrl+S", 
-                         command=lambda: guardar(root, mensaje, texto),
+                         command=lambda: guardar(editor_tabs, mensaje),
                          image=img_save,
                          compound=tkinter.LEFT)
     filemenu.add_command(label="Guardar como", 
                          accelerator="Ctrl+Shift+S", 
-                         command=lambda: guardar_como(root, mensaje, texto),
+                         command=lambda: guardar_como(editor_tabs, mensaje),
                          image=img_save_as,
                          compound=tkinter.LEFT)
     filemenu.add_separator()
@@ -81,44 +90,44 @@ def create_menu(root, mensaje, texto):
     editmenu = Menu(menubar, tearoff=0)
     editmenu.add_command(label="Copiar",
                          accelerator="Ctrl+C",
-                         command=lambda: copiar(root, mensaje, texto),
+                         command=lambda: copiar(root, mensaje, get_current_text(editor_tabs)),
                          image=img_copy,
                          compound=tkinter.LEFT)
     editmenu.add_command(label="Cortar",
                          accelerator="Ctrl+X",
-                         command=lambda: cortar(root, mensaje, texto),
+                         command=lambda: cortar(root, mensaje, get_current_text(editor_tabs)),
                          image=img_cut,
                          compound=tkinter.LEFT)
     editmenu.add_command(label="Pegar",
                          accelerator="Ctrl+V",
-                         command=lambda: pegar(root, mensaje, texto),
+                         command=lambda: pegar(root, mensaje, get_current_text(editor_tabs)),
                          image=img_paste,
                          compound=tkinter.LEFT)
     editmenu.add_separator()
     editmenu.add_command(label="Seleccionar todo",
                          accelerator="Ctrl+A",
-                         command=lambda: seleccionar_todo(root, mensaje, texto),
+                         command=lambda: seleccionar_todo(root, mensaje, get_current_text(editor_tabs)),
                          image=img_select_all,
                          compound=tkinter.LEFT)
     
     # Menu fuente
     toolmenu = Menu(menubar, tearoff=0)
     toolmenu.add_command(label="Aumentar tamaño",
-                         command=lambda: aumentar_fuente(texto),
+                         command=lambda: aumentar_fuente(get_current_text(editor_tabs)),
                          image=img_mas,
                          compound=tkinter.LEFT)
     toolmenu.add_command(label="Disminuir tamaño",
-                         command= lambda: disminuir_fuente(texto),
+                         command= lambda: disminuir_fuente(get_current_text(editor_tabs)),
                          image=img_menos,
                          compound=tkinter.LEFT)
 
     # Asociar el atajo del teclado del menu
 
     # Menu de archivos
-    root.bind("<Control-n>", lambda event: nuevo(root, mensaje, texto))
-    root.bind("<Control-o>", lambda event: abrir(root, mensaje, texto))
-    root.bind("<Control-s>", lambda event: guardar(root, mensaje, texto))
-    root.bind("<Control-S>", lambda event: guardar_como(root, mensaje, texto))
+    root.bind("<Control-n>", lambda event: nuevo(editor_tabs, mensaje))
+    root.bind("<Control-o>", lambda event: abrir(editor_tabs, mensaje))
+    root.bind("<Control-s>", lambda event: guardar(editor_tabs, mensaje))
+    root.bind("<Control-S>", lambda event: guardar_como(editor_tabs, mensaje))
 
     menubar.add_cascade(menu=filemenu, label="Archivo")
     menubar.add_cascade(menu=editmenu, label="Editar")
