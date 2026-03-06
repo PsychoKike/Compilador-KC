@@ -1,7 +1,7 @@
 import os
 from tkinter import Menu, PhotoImage
 import tkinter
-from file_operations import nuevo, abrir, guardar, guardar_como
+from file_operations import nuevo, abrir, guardar, guardar_como, cerrar_pestana_actual
 from text_operations import copiar, cortar, pegar, seleccionar_todo
 from font_operations import aumentar_fuente, disminuir_fuente
 
@@ -81,11 +81,18 @@ def create_menu(root, mensaje, editor_tabs):
                          image=img_save_as,
                          compound=tkinter.LEFT)
     filemenu.add_separator()
+    filemenu.add_command(label="Cerrar pestaña", 
+                         accelerator="Ctrl+W", 
+                         command=lambda: cerrar_pestana_actual(editor_tabs),
+                         image=img_quit, # <--- Mismo símbolo
+                         compound=tkinter.LEFT)
+
     filemenu.add_command(label="Salir", 
                          command=root.quit,
                          image=img_quit,
                          compound=tkinter.LEFT)
-    
+    # En menu.py, busca donde agregas la opción de cerrar:
+        
     # Menu de editar
     editmenu = Menu(menubar, tearoff=0)
     editmenu.add_command(label="Copiar",
@@ -109,6 +116,7 @@ def create_menu(root, mensaje, editor_tabs):
                          command=lambda: seleccionar_todo(root, mensaje, get_current_text(editor_tabs)),
                          image=img_select_all,
                          compound=tkinter.LEFT)
+
     
     # Menu fuente
     toolmenu = Menu(menubar, tearoff=0)
@@ -131,6 +139,62 @@ def create_menu(root, mensaje, editor_tabs):
 
     menubar.add_cascade(menu=filemenu, label="Archivo")
     menubar.add_cascade(menu=editmenu, label="Editar")
+    menubar.add_cascade(menu=toolmenu, label="Herramientas")
+    
+    compilarmenu = Menu(menubar, tearoff=0)
+    
+    # Análisis Léxico
+    compilarmenu.add_command(
+        label="Análisis Léxico",
+        accelerator="F5",
+        command=lambda: run_command(
+            editor_tabs, mensaje, 
+            # Aquí pasas los frames/pantallas necesarios que requiere tu función run_command
+            # Nota: Asegúrate de que estas variables estén disponibles en el scope o pasarlas como argumentos
+            frame_lexico, pantalla_errores, frame_sintactico
+        ),
+        image=img_save, # Puedes reusar un icono o dejarlo sin image
+        compound=tkinter.LEFT
+    )
+    
+    # Análisis Sintáctico
+    compilarmenu.add_command(
+        label="Análisis Sintáctico",
+        command=lambda: print("Ejecutando Sintáctico..."), # Aquí va tu función de sintaxis
+        compound=tkinter.LEFT
+    )
+    
+    # Análisis Semántico
+    compilarmenu.add_command(
+        label="Análisis Semántico",
+        command=lambda: mensaje.set("Ejecutando análisis semántico..."),
+        compound=tkinter.LEFT
+    )
+    
+    compilarmenu.add_separator()
+    
+    # Generación de Código Intermedio
+    compilarmenu.add_command(
+        label="Generación de Código Intermedio",
+        command=lambda: mensaje.set("Generando código intermedio..."),
+        compound=tkinter.LEFT
+    )
+    
+    # Ejecución
+    compilarmenu.add_command(
+        label="Ejecución",
+        accelerator="F6",
+        command=lambda: mensaje.set("Iniciando ejecución..."),
+        image=img_new, # Ejemplo de reuso de icono
+        compound=tkinter.LEFT
+    )
+
+    # =========================
+    # Agregar las cascadas al menubar
+    # =========================
+    menubar.add_cascade(menu=filemenu, label="Archivo")
+    menubar.add_cascade(menu=editmenu, label="Editar")
+    menubar.add_cascade(menu=compilarmenu, label="Compilar") # <--- Nueva cascada
     menubar.add_cascade(menu=toolmenu, label="Herramientas")
 
     root.config(menu=menubar)

@@ -4,8 +4,23 @@ from lexer import reset_lexer
 from test_lexer import test_lexer
 from sintac import calculate_levels, parse_code
 from tab_widget import TabWithCloseButton
+from tkinter import messagebox
 
 ruta_archivos = {}
+
+
+def cerrar_pestana_actual(editor_tabs, actualizar_func=None):
+    # Obtenemos todas las pestañas abiertas
+    tabs = editor_tabs.tabs()
+    
+    if len(tabs) > 1:
+        actual = editor_tabs.select()
+        editor_tabs.forget(actual)
+        # Si pasamos la función de actualizar (coordenadas), la ejecutamos
+        if actualizar_func:
+            actualizar_func()
+    else:
+        messagebox.showwarning("Cerrar archivo", "No puedes cerrar todas las pestañas. Debe quedar al menos una abierta.")
 
 # ============================================
 # OBTENER EDITOR ACTIVO

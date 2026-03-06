@@ -3,7 +3,8 @@ from tkinter import ttk, StringVar, Label
 
 from file_operations import (
     obtener_texto_actual,
-    crear_pestana
+    crear_pestana,
+    cerrar_pestana_actual,
 )
 
 from menu import create_menu
@@ -58,12 +59,17 @@ def actualizar(event=None):
 # =========================
 
 def cerrar_pestana(editor_tabs):
-
-    if len(editor_tabs.tabs()) > 1:
-
+    # Obtenemos cuántas pestañas hay
+    tabs = editor_tabs.tabs()
+    
+    if len(tabs) > 1:
         actual = editor_tabs.select()
-
         editor_tabs.forget(actual)
+        # Después de cerrar, forzamos la actualización de coordenadas
+        actualizar() 
+    else:
+        from tkinter import messagebox
+        messagebox.showwarning("Cerrar archivo", "No puedes cerrar todas las pestañas. Debe quedar al menos una abierta.")
 
 
 # =========================
@@ -109,7 +115,9 @@ def create_editor():
 
     editor_tabs.bind("<<NotebookTabChanged>>", actualizar)
 
-    root.bind("<Control-w>", lambda e: cerrar_pestana(editor_tabs))
+    # Cambia el bind para usar la nueva función y pasarle la actualización
+    root.bind("<Control-w>", lambda e: cerrar_pestana_actual(editor_tabs, actualizar))
+    root.bind("<Control-W>", lambda e: cerrar_pestana_actual(editor_tabs, actualizar))
 
     # =========================
     # BARRA DE COORDENADAS
