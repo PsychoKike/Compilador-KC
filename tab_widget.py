@@ -23,6 +23,10 @@ class TabWithCloseButton:
 
         self.line_numbers = LineNumbers(editor_frame, self.text)
 
+        # =========================
+        # SCROLL
+        # =========================
+
         self.text.config(yscrollcommand=self.on_text_scroll)
         scrollbar.config(command=self.on_scrollbar_move)
 
@@ -32,33 +36,57 @@ class TabWithCloseButton:
 
         self.text.insert("1.0", content)
 
-        if actualizar:
-            
-            self.text.bind("<ButtonRelease>", actualizar)
+        # =========================
+        # REDIBUJAR LINE NUMBERS
+        # =========================
 
-        notebook.add(self.main_frame, text=title)
-        
-        # IMPORTANTE: Vincular al evento <Map> que ocurre cuando la pestaña es visible
-        self.main_frame.bind("<Map>", self.on_tab_mapped)
-        
-        # También vincular al cambio de tamaño del texto
+        # Cuando se escribe
+        self.text.bind("<KeyPress>", self.on_text_change)
+
+        # Cuando se pega texto
+        self.text.bind("<<Paste>>", self.on_text_change)
+
+        # Cuando se borra
+        self.text.bind("<BackSpace>", self.on_text_change)
+
+        # Cuando cambia tamaño
         self.text.bind("<Configure>", lambda e: self.line_numbers.redraw())
 
+        # =========================
+        # AGREGAR PESTAÑA
+        # =========================
+
+        notebook.add(self.main_frame, text=title)
+
+        # Cuando la pestaña aparece
+        self.main_frame.bind("<Map>", self.on_tab_mapped)
+
+    # =========================
+    # EVENTOS
+    # =========================
+
+    def on_text_change(self, event=None):
+        """Actualizar números después de que Tkinter termine de escribir"""
+        self.text.after_idle(self.line_numbers.redraw)
+
     def on_tab_mapped(self, event):
-        """Se llama cuando la pestaña se hace visible por primera vez"""
-        # Esperar un poco más para asegurar que todo está renderizado
-        self.text.after(2, self.line_numbers.redraw)
-        
+        """Se ejecuta cuando la pestaña se vuelve visible"""
+        self.text.after(10, self.line_numbers.redraw)
+
     def on_text_scroll(self, *args):
-        """Cuando el texto se desplaza, actualizar números y scrollbar"""
+        """Scroll desde el texto"""
         self.line_numbers.redraw()
         if args:
             self.text.yview_moveto(args[0])
 
     def on_scrollbar_move(self, *args):
-        """Cuando se mueve el scrollbar, mover el texto"""
+        """Scroll desde la barra"""
         self.text.yview(*args)
         self.line_numbers.redraw()
+
+    # =========================
+    # OBTENER TEXT WIDGET
+    # =========================
 
     def get_text_widget(self):
         return self.text

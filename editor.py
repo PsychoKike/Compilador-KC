@@ -29,9 +29,15 @@ def actualizar_coordenadas(texto, label):
 
         linea, columna = texto.index("insert").split(".")
 
-        total_lineas = texto.index("end-1c").split(".")[0]
+        contenido = texto.get("1.0", "end-1c")
 
-        caracteres = texto.count("1.0", "end-1c", "chars")[0]
+        total_lineas = contenido.count("\n") + 1
+
+        caracteres = len(
+            contenido.replace(" ", "")
+                     .replace("\n", "")
+                     .replace("\t", "")
+        )
 
         label.config(
             text=f"Línea: {linea}   Col: {int(columna)+1}   Total líneas: {total_lineas}   Caracteres: {caracteres}"
@@ -39,18 +45,6 @@ def actualizar_coordenadas(texto, label):
 
     except:
         pass
-
-
-# =========================
-# ACTUALIZACIÓN GENERAL
-# =========================
-
-def actualizar(event=None):
-
-    texto_actual = obtener_texto_actual(editor_tabs)
-
-    if texto_actual:
-        actualizar_coordenadas(texto_actual, coord_label)
 
 
 # =========================
@@ -64,6 +58,26 @@ def cerrar_pestana(editor_tabs):
         actual = editor_tabs.select()
 
         editor_tabs.forget(actual)
+
+
+# =========================
+# CLICK EN LA X DEL TAB
+# =========================
+
+def cerrar_tab_click(event):
+
+    elemento = editor_tabs.identify(event.x, event.y)
+
+    if "label" in elemento:
+
+        index = editor_tabs.index(f"@{event.x},{event.y}")
+
+        tab_text = editor_tabs.tab(index, "text")
+
+        if tab_text.endswith("✕"):
+
+            if len(editor_tabs.tabs()) > 1:
+                editor_tabs.forget(index)
 
 
 # =========================
@@ -107,7 +121,7 @@ def create_editor():
     editor_tabs = ttk.Notebook(frame_editor)
     editor_tabs.pack(fill="both", expand=True)
 
-    editor_tabs.bind("<<NotebookTabChanged>>", actualizar)
+    editor_tabs.bind("<Button-1>", cerrar_tab_click)
 
     root.bind("<Control-w>", lambda e: cerrar_pestana(editor_tabs))
 
@@ -132,10 +146,9 @@ def create_editor():
     # CREAR PRIMER ARCHIVO
     # =========================
 
-    crear_pestana(editor_tabs, "Nuevo archivo", "", actualizar)
-    
-    actualizar()
+    crear_pestana(editor_tabs, "Nuevo archivo", "")
 
+    
     # =========================
     # PANEL DERECHO (ANÁLISIS)
     # =========================
@@ -164,10 +177,9 @@ def create_editor():
     # =========================
 
     mensaje = StringVar()
-    mensaje.set("Bienvenido a Suavecito Compiler")
+    mensaje.set("Bienvenido a Compilador KC")
 
     monitor = Label(root, textvariable=mensaje, font=("Consolas", 9))
-
     monitor.pack(side="bottom", anchor="w", padx=10)
 
     # =========================
@@ -175,9 +187,7 @@ def create_editor():
     # =========================
 
     notebook_output = ttk.Notebook(root)
-
     notebook_output.config(height=180)
-
     notebook_output.pack(side="bottom", fill="x")
 
     frame_results = tk.Frame(notebook_output)
@@ -213,6 +223,21 @@ def create_editor():
         frame_hash,
         frame_intermedio
     )
+
+    # =========================
+    # LOOP DE ACTUALIZACIÓN
+    # =========================
+
+    def loop_actualizacion():
+
+        texto_actual = obtener_texto_actual(editor_tabs)
+
+        if texto_actual:
+            actualizar_coordenadas(texto_actual, coord_label)
+
+        root.after(16, loop_actualizacion)
+
+    loop_actualizacion()
 
     root.mainloop()
 
