@@ -103,7 +103,7 @@ def abrir(editor_tabs, mensaje):
     if not ruta:
         return
 
-    with open(ruta, 'r', encoding='lati') as archivo:
+    with open(ruta, 'r', encoding='latin-1') as archivo:
         contenido = archivo.read()
 
     nombre = ruta.split("/")[-1]
