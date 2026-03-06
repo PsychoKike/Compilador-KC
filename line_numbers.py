@@ -4,7 +4,7 @@ import tkinter as tk
 class LineNumbers(tk.Canvas):
 
     def __init__(self, master, text_widget):
-        super().__init__(master, width=50, bg="#1e1e1e", highlightthickness=0)
+        super().__init__(master, width=50, bg="#fafafa", highlightthickness=0)
 
         self.text_widget = text_widget
         self.font = ("Consolas", 11)
@@ -13,7 +13,7 @@ class LineNumbers(tk.Canvas):
         self.text_widget.bind("<KeyRelease>", self.redraw)
         self.text_widget.bind("<ButtonRelease>", self.redraw)
         self.text_widget.bind("<MouseWheel>", self.redraw)
-        self.text_widget.bind("<Configure>", self.redraw)  # Importante para cuando cambia el tamaño
+        self.text_widget.bind("<Configure>", self.redraw)  
         
         # Dibujar inicialmente
         self.redraw()
@@ -56,7 +56,7 @@ class LineNumbers(tk.Canvas):
                 anchor="ne",
                 text=line_number,
                 font=self.font,
-                fill="#bbbbbb"
+                fill="#010101"
             )
             
             # Mover a la siguiente línea

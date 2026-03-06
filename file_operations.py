@@ -59,6 +59,8 @@ def obtener_texto_actual(editor_tabs):
 def crear_pestana(editor_tabs, nombre="Nuevo archivo", contenido="", actualizar=None):
     tab = TabWithCloseButton(editor_tabs, nombre, contenido, actualizar)
     editor_tabs.select(tab.main_frame)
+    editor_tabs.add(tab.main_frame, text=nombre + " ✕")
+    
     
     if actualizar:
         tab.main_frame.after(100, actualizar)
@@ -67,6 +69,7 @@ def crear_pestana(editor_tabs, nombre="Nuevo archivo", contenido="", actualizar=
     tab.main_frame.after(3, lambda: tab.line_numbers.redraw() or tab.line_numbers.redraw())
     
     return tab.get_text_widget()
+
 
 
 # ============================================
@@ -78,6 +81,7 @@ def nuevo(editor_tabs, mensaje, actualizar=None):
     mensaje.set("Nuevo archivo")
 
     crear_pestana(editor_tabs, "Nuevo archivo", "", actualizar)
+    
 
 
 # ============================================
@@ -95,7 +99,7 @@ def abrir(editor_tabs, mensaje):
     if not ruta:
         return
 
-    with open(ruta, 'r', encoding='utf-8') as archivo:
+    with open(ruta, 'r', encoding='latin-1') as archivo:
         contenido = archivo.read()
 
     nombre = ruta.split("/")[-1]
