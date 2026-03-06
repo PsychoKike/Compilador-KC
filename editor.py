@@ -49,6 +49,18 @@ def actualizar_coordenadas(texto, label):
 
 
 # =========================
+# ACTUALIZACIÓN GENERAL
+# =========================
+
+def actualizar(event=None):
+
+    texto_actual = obtener_texto_actual(editor_tabs)
+
+    if texto_actual:
+        actualizar_coordenadas(texto_actual, coord_label)
+
+
+# =========================
 # CERRAR PESTAÑA
 # =========================
 
@@ -64,26 +76,6 @@ def cerrar_pestana(editor_tabs):
     else:
         from tkinter import messagebox
         messagebox.showwarning("Cerrar archivo", "No puedes cerrar todas las pestañas. Debe quedar al menos una abierta.")
-
-
-# =========================
-# CLICK EN LA X DEL TAB
-# =========================
-
-def cerrar_tab_click(event):
-
-    elemento = editor_tabs.identify(event.x, event.y)
-
-    if "label" in elemento:
-
-        index = editor_tabs.index(f"@{event.x},{event.y}")
-
-        tab_text = editor_tabs.tab(index, "text")
-
-        if tab_text.endswith("✕"):
-
-            if len(editor_tabs.tabs()) > 1:
-                editor_tabs.forget(index)
 
 
 # =========================
@@ -114,22 +106,35 @@ def create_editor():
     frame_principal.pack(fill="both", expand=True)
 
     # =========================
-    # FRAME EDITOR
+    # FRAME EDITOR CON BOTÓN DE CERRAR
     # =========================
 
     frame_editor = tk.Frame(frame_principal)
     frame_editor.pack(side="left", fill="both", expand=True)
 
-    # =========================
-    # NOTEBOOK EDITOR
-    # =========================
+    # Frame superior para el notebook y botón de cerrar
+    tab_frame = tk.Frame(frame_editor)
+    tab_frame.pack(fill="x")
 
-    editor_tabs = ttk.Notebook(frame_editor)
-    editor_tabs.pack(fill="both", expand=True)
+    # Notebook (pestañas)
+    editor_tabs = ttk.Notebook(tab_frame)
+    editor_tabs.pack(side="left", fill="x", expand=True)
 
-    editor_tabs.bind("<Button-1>", cerrar_tab_click)
+    close_button = tk.Button(
+        tab_frame,
+        text="✖",
+        font=("Arial", 12, "bold"),
+        fg="red",
+        bd=10,
+        padx=10,
+        command=lambda: cerrar_pestana_actual(editor_tabs, actualizar)
+    )
+    close_button.pack(side="right", padx=(5, 5), pady=5)
 
-    # Cambia el bind para usar la nueva función y pasarle la actualización
+    # Bind para cambiar de pestaña
+    editor_tabs.bind("<<NotebookTabChanged>>", actualizar)
+
+    # Bind para cerrar con Ctrl+W
     root.bind("<Control-w>", lambda e: cerrar_pestana_actual(editor_tabs, actualizar))
     root.bind("<Control-W>", lambda e: cerrar_pestana_actual(editor_tabs, actualizar))
 
@@ -155,8 +160,10 @@ def create_editor():
     # =========================
 
     crear_pestana(editor_tabs, "Nuevo archivo", "")
-
     
+    # Actualizar coordenadas iniciales
+    actualizar()
+
     # =========================
     # PANEL DERECHO (ANÁLISIS)
     # =========================
