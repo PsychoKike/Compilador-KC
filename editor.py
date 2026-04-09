@@ -23,8 +23,12 @@ coord_label = None
 # =========================
 # ACTUALIZAR COORDENADAS
 # =========================
+ultima_posicion_cursor = None
+ultimo_texto = None
 
 def actualizar_coordenadas(texto, label):
+
+    global ultima_posicion_cursor, ultimo_texto
 
     try:
 
@@ -43,6 +47,14 @@ def actualizar_coordenadas(texto, label):
         label.config(
             text=f"Línea: {linea}   Col: {int(columna)+1}   Total líneas: {total_lineas}   Caracteres: {caracteres}"
         )
+
+        posicion_actual = texto.index("insert")
+
+        # Scroll si cambió posición o cambió el editor
+        if posicion_actual != ultima_posicion_cursor or texto != ultimo_texto:
+            texto.see("insert")
+            ultima_posicion_cursor = posicion_actual
+            ultimo_texto = texto
 
     except:
         pass
@@ -263,3 +275,4 @@ def create_editor():
 
 if __name__ == "__main__":
     create_editor()
+    

@@ -4,7 +4,6 @@ Unused terminals:
 
     NOT
     POWER
-    TB
 
 Grammar
 
@@ -110,7 +109,6 @@ RBRACE               : 1 31
 READ                 : 27
 RPAREN               : 22 25 26 64
 SEMICOLON            : 5 26 27 28 32 33 34
-TB                   : 
 THEN                 : 22
 TIMES                : 54
 TRUE                 : 62

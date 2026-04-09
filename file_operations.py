@@ -35,6 +35,7 @@ def obtener_texto_actual(editor_tabs):
         return None
 
     return buscar(tab)
+    
 
 
 # ============================================
@@ -50,8 +51,11 @@ def crear_pestana(editor_tabs, nombre="Nuevo archivo", contenido="", actualizar=
     
     # Forzar un redibujado de los números de línea después de crear la pestaña
     tab.main_frame.after(3, lambda: tab.line_numbers.redraw() or tab.line_numbers.redraw())
-    
-    return tab.get_text_widget()
+    text_widget = tab.get_text_widget()
+    text_widget.bind("<KeyRelease>", lambda e: highlight_syntax(text_widget))
+    tab.main_frame.after(100, lambda: highlight_syntax(text_widget))
+
+
 # ============================================
 # CERRAR PESTAÑA ACTUAL
 # ============================================
@@ -115,6 +119,8 @@ def abrir(editor_tabs, mensaje):
     ruta_archivos[str(tab)] = ruta
 
     mensaje.set("Archivo abierto")
+    highlight_syntax(texto)
+
 
 
 # ============================================
@@ -353,33 +359,84 @@ def tokens_to_text(tokens):
 
 def highlight_syntax(texto):
 
-    if not texto:
-        return
+    import re
 
-    keywords = ['int', 'float', 'if', 'else', 'for', 'while', 'do']
+    content = texto.get("1.0", "end-1c")
 
-    texto.tag_remove("keyword", "1.0", END)
+    # 🔹 Limpiar SOLO nuestros tags
+    tags = [
+        "number", "identifier", "comment",
+        "keyword", "arith", "logic_rel",
+        "symbol", "assign", "string"
+    ]
 
+    for tag in tags:
+        texto.tag_remove(tag, "1.0", "end")
+
+    # 🔹 Colores
+    texto.tag_config("number", foreground="#B5CEA8")      # verde claro
+    texto.tag_config("identifier", foreground="#9CDCFE")  # azul claro
+    texto.tag_config("comment", foreground="#6A9955")     # verde oscuro
+    texto.tag_config("keyword", foreground="#569CD6")     # azul
+    texto.tag_config("arith", foreground="#D19A66")       # naranja
+    texto.tag_config("logic_rel", foreground="#C586C0")   # morado
+    texto.tag_config("symbol", foreground="#D4D4D4")      # gris
+    texto.tag_config("assign", foreground="#FF5555")      # rojo
+    texto.tag_config("string", foreground="#CE9178")      # naranja claro
+
+    # 🔹 Palabras reservadas
+    keywords = [
+        'if','else','end','do','while','switch','case',
+        'int','float','main','cin','cout'
+    ]
+
+    # 🔹 Patrones regex
+    patterns = [
+        ("comment", r'//.*'),
+        ("comment", r'/\*.*?\*/'),
+        ("string", r'\".*?\"'),
+        ("string", r"\'.*?\'"),
+
+        # números
+        ("number", r'\b\d+(\.\d+)?\b'),
+
+        # operadores aritméticos
+        ("arith", r'\+\+|--|\+|-|\*|/|%|\^'),
+
+        # relacionales + lógicos
+        ("logic_rel", r'<=|>=|==|!=|<|>|\|\||&&|!'),
+
+        # asignación
+        ("assign", r'='),
+
+        # símbolos
+        ("symbol", r'[\(\)\{\},;]'),
+    ]
+
+    # 🔹 Aplicar keywords
     for kw in keywords:
-
         start = "1.0"
-
         while True:
-
-            pos = texto.search(
-                r'\y' + kw + r'\y',
-                start,
-                stopindex=END,
-                regexp=True
-            )
-
+            pos = texto.search(r'\y' + kw + r'\y', start, stopindex="end", regexp=True)
             if not pos:
                 break
-
             end = f"{pos}+{len(kw)}c"
-
             texto.tag_add("keyword", pos, end)
-
             start = end
 
-    texto.tag_config("keyword", foreground="blue")
+    # 🔹 Aplicar regex
+    for tag, pattern in patterns:
+        for match in re.finditer(pattern, content, re.DOTALL):
+            start = f"1.0 + {match.start()}c"
+            end = f"1.0 + {match.end()}c"
+            texto.tag_add(tag, start, end)
+
+    # 🔹 Identificadores (al final para no pisar keywords)
+    for match in re.finditer(r'\b[a-zA-Z_][a-zA-Z0-9_]*\b', content):
+        start = f"1.0 + {match.start()}c"
+        end = f"1.0 + {match.end()}c"
+
+        # evitar pintar keywords como identificadores
+        word = match.group()
+        if word not in keywords:
+            texto.tag_add("identifier", start, end)
