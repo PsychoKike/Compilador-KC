@@ -5,15 +5,18 @@ import ply.lex as lex
 # ================================
 tokens = (
     'PROGRAM', 'IF', 'ELSE', 'FI', 'DO', 'UNTIL', 'WHILE', 'READ', 'WRITE',
-    'FLOAT', 'INT', 'BOOL', 'NOT', 'AND', 'OR', 'TRUE', 'FALSE', 'BREAK', 'THEN',
+    'FLOAT', 'INT', 'BOOL', 'NOT_OP', 'AND', 'OR', 'TRUE', 'FALSE', 'BREAK', 'THEN',
 
-    'PLUS', 'MINUS', 'TIMES', 'DIVIDE', 'POWER',
+    'PLUS', 'MINUS', 'TIMES', 'DIVIDE', 'POWER', 'MODULO',
 
     'LT', 'LE', 'GT', 'GE', 'EQ', 'NE', 'ASSIGN',
 
     'SEMICOLON', 'COMMA', 'LPAREN', 'RPAREN', 'LBRACE', 'RBRACE',
 
-    'IDENTIFIER', 'NUMBER'
+    'IDENTIFIER', 'NUMBER',
+    
+    # OPERADORES LARGOS (IMPORTANTE: deben ir al final para evitar conflictos con los cortos)
+    'INCREMENT', 'DECREMENT', 'AND_OP', 'OR_OP'
 )
 
 # ================================
@@ -37,11 +40,34 @@ t_LT = r'<'
 t_GT = r'>'
 t_ASSIGN = r'='
 
+def t_INCREMENT(t):
+    r'\+\s*\+'
+    t.value = '++'
+    return t
+
+def t_DECREMENT(t):
+    r'\-\s*\-'
+    t.value = '--'
+    return t
+
+def t_AND_OP(t):
+    r'&\s*&'
+    t.value = '&&'
+    return t
+
+def t_OR_OP(t):
+    r'\|\s*\|'
+    t.value = '||'
+    return t
+
 t_PLUS = r'\+'
 t_MINUS = r'-'
 t_TIMES = r'\*'
 t_DIVIDE = r'/'
 t_POWER = r'\^'
+t_MODULO = r'%'
+t_NOT_OP = r'!'
+
 
 # ================================
 # SÍMBOLOS

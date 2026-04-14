@@ -2,6 +2,15 @@ import ply.yacc as yacc
 from lexer import tokens, find_column
 from graphviz import Digraph
 
+precedence = (
+    ('left', 'OR', 'OR_OP'),
+    ('left', 'AND', 'AND_OP'),
+    ('left', 'EQ', 'NE'),
+    ('left', 'LT', 'LE', 'GT', 'GE'),
+    ('left', 'PLUS', 'MINUS'),
+    ('left', 'TIMES', 'DIVIDE'),
+)
+
 # Lista global para almacenar errores sintácticos
 syntax_errors = []
 
@@ -126,27 +135,11 @@ def p_sent_assign_factor(p):
     '''sent_assign : IDENTIFIER ASSIGN factor SEMICOLON'''
     p[0] = ASTNode('sent_assign', [ASTNode('identifier', leaf=p[1]), p[3]])
 
-def p_exp_bool(p):
-    '''exp_bool : exp_bool OR comb
-                | comb'''
-    if len(p) == 4:
-        p[0] = ASTNode('exp_bool', [p[1], ASTNode('operator', leaf=p[2]), p[3]])
-    else:
-        p[0] = ASTNode('exp_bool', [p[1]])
 
 def p_exp_bool_or_value(p):
     '''exp_bool_or_value : exp_bool
                          | exp_value'''
     p[0] = p[1]
-
-
-def p_comb(p):
-    '''comb : comb AND igualdad
-            | igualdad'''
-    if len(p) == 4:
-        p[0] = ASTNode('comb', [p[1], ASTNode('operator', leaf=p[2]), p[3]])
-    else:
-        p[0] = ASTNode('comb', [p[1]])
 
 def p_igualdad(p):
     '''igualdad : igualdad EQ rel
@@ -183,6 +176,7 @@ def p_expr(p):
 def p_term(p):
     '''term : term TIMES unario
             | term DIVIDE unario
+            | term POWER unario
             | unario'''
     if len(p) == 4:
         p[0] = ASTNode('term', [p[1], ASTNode('operator', leaf=p[2]), p[3]])
@@ -192,6 +186,7 @@ def p_term(p):
 def p_unario(p):
     '''unario : PLUS unario
               | MINUS unario
+              | NOT unario
               | factor'''
     if len(p) == 3:
         p[0] = ASTNode('unario', [ASTNode('operator', leaf=p[1]), p[2]])
@@ -203,6 +198,8 @@ def p_factor(p):
               | IDENTIFIER
               | TRUE
               | FALSE
+              | increment
+              | decrement
               | LPAREN exp_bool RPAREN'''
     if len(p) == 2:
         p[0] = ASTNode('factor', leaf=p[1])
@@ -228,6 +225,45 @@ def p_error(p):
     else:
         syntax_errors.append("Syntax Error: Unexpected end of file.")
 
+def p_exp_bool(p):
+    '''exp_bool : exp_bool OR comb
+                | exp_bool OR_OP comb
+                | comb'''
+    if len(p) == 4:
+        p[0] = ASTNode('exp_bool', [p[1], ASTNode('operator', leaf=p[2]), p[3]])
+    else:
+        p[0] = ASTNode('exp_bool', [p[1]])
+
+def p_comb(p):
+    '''comb : comb AND igualdad
+            | comb AND_OP igualdad
+            | igualdad'''
+    if len(p) == 4:
+        p[0] = ASTNode('comb', [p[1], ASTNode('operator', leaf=p[2]), p[3]])
+    else:
+        p[0] = ASTNode('comb', [p[1]])
+        
+def p_increment(p):
+    '''increment : IDENTIFIER INCREMENT
+                 | INCREMENT IDENTIFIER'''
+    
+    if p.slice[1].type == 'INCREMENT':
+        # ++x (pre)
+        p[0] = ASTNode('increment', [ASTNode('identifier', leaf=p[2])], leaf='pre++')
+    else:
+        # x++
+        p[0] = ASTNode('increment', [ASTNode('identifier', leaf=p[1])], leaf='post++')
+        
+def p_decrement(p):
+    '''decrement : IDENTIFIER DECREMENT
+                 | DECREMENT IDENTIFIER'''
+    
+    if p.slice[1].type == 'DECREMENT':
+        # --x (pre)
+        p[0] = ASTNode('decrement', [ASTNode('identifier', leaf=p[2])], leaf='pre--')
+    else:
+        # x--
+        p[0] = ASTNode('decrement', [ASTNode('identifier', leaf=p[1])], leaf='post--')
 # Construcción del parser
 parser = yacc.yacc()
 
