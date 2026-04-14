@@ -2,6 +2,7 @@ Created by PLY version 3.11 (http://www.dabeaz.com/ply)
 
 Unused terminals:
 
+    INVALID_FLOAT
     MODULO
 
 Grammar
@@ -108,6 +109,7 @@ IDENTIFIER           : 9 10 27 31 33 34 35 61 74 75 76 77
 IF                   : 22
 INCREMENT            : 74 75
 INT                  : 6
+INVALID_FLOAT        : 
 LBRACE               : 1 32
 LE                   : 43
 LPAREN               : 22 25 26 66

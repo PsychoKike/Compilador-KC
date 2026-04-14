@@ -13,7 +13,7 @@ tokens = (
 
     'SEMICOLON', 'COMMA', 'LPAREN', 'RPAREN', 'LBRACE', 'RBRACE',
 
-    'IDENTIFIER', 'NUMBER', 'FLOAT_NUMBER',
+    'IDENTIFIER', 'NUMBER', 'FLOAT_NUMBER', 'INVALID_FLOAT',
     
     # OPERADORES LARGOS (IMPORTANTE: deben ir al final para evitar conflictos con los cortos)
     'INCREMENT', 'DECREMENT', 'AND_OP', 'OR_OP'
@@ -102,6 +102,15 @@ def t_IDENTIFIER(t):
     if t.value.lower() in keywords:
         t.type = t.value.upper()
     return t
+def t_INVALID_FLOAT(t):
+    r'\d+\.(?!\d)'  
+
+    column = find_column(t.lexer.lexdata, t)
+    error_message = f"Invalid float '{t.value}' at line {t.lexer.lineno}, column {column}"
+    
+    t.lexer.errors.append((t.value, t.lexer.lineno, column, error_message))
+    
+    pass
 
 # ================================
 # NÚMEROS
