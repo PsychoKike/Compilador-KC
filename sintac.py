@@ -116,6 +116,7 @@ def p_sent_write(p):
 
 def p_exp_value(p):
     '''exp_value : NUMBER
+                | FLOAT_NUMBER
                  | IDENTIFIER'''
     p[0] = ASTNode('exp_value', leaf=p[1])
 
@@ -195,6 +196,7 @@ def p_unario(p):
 
 def p_factor(p):
     '''factor : NUMBER
+              | FLOAT_NUMBER
               | IDENTIFIER
               | TRUE
               | FALSE

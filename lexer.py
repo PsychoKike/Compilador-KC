@@ -13,7 +13,7 @@ tokens = (
 
     'SEMICOLON', 'COMMA', 'LPAREN', 'RPAREN', 'LBRACE', 'RBRACE',
 
-    'IDENTIFIER', 'NUMBER',
+    'IDENTIFIER', 'NUMBER', 'FLOAT_NUMBER',
     
     # OPERADORES LARGOS (IMPORTANTE: deben ir al final para evitar conflictos con los cortos)
     'INCREMENT', 'DECREMENT', 'AND_OP', 'OR_OP'
@@ -106,9 +106,14 @@ def t_IDENTIFIER(t):
 # ================================
 # NÚMEROS
 # ================================
+def t_FLOAT_NUMBER(t):
+    r'\d+\.\d+'  # Solo números con punto decimal
+    t.value = float(t.value)
+    return t
+
 def t_NUMBER(t):
-    r'\d+(\.\d+)?'
-    t.value = float(t.value) if '.' in t.value else int(t.value)
+    r'\d+'  # Solo enteros
+    t.value = int(t.value)
     return t
 
 # ================================
