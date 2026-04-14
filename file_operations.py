@@ -358,12 +358,11 @@ def tokens_to_text(tokens):
 # ============================================
 
 def highlight_syntax(texto):
-
     import re
 
     content = texto.get("1.0", "end-1c")
 
-    # 🔹 Limpiar SOLO nuestros tags
+    # 🔹 Limpiar tags
     tags = [
         "number", "identifier", "comment",
         "keyword", "arith", "logic_rel",
@@ -374,69 +373,81 @@ def highlight_syntax(texto):
         texto.tag_remove(tag, "1.0", "end")
 
     # 🔹 Colores
-    texto.tag_config("number", foreground="#B5CEA8")      # verde claro
-    texto.tag_config("identifier", foreground="#9CDCFE")  # azul claro
-    texto.tag_config("comment", foreground="#6A9955")     # verde oscuro
-    texto.tag_config("keyword", foreground="#569CD6")     # azul
-    texto.tag_config("arith", foreground="#D19A66")       # naranja
-    texto.tag_config("logic_rel", foreground="#C586C0")   # morado
-    texto.tag_config("symbol", foreground="#D4D4D4")      # gris
-    texto.tag_config("assign", foreground="#FF5555")      # rojo
-    texto.tag_config("string", foreground="#CE9178")      # naranja claro
+    texto.tag_config("number", foreground="#18B2CD")
+    texto.tag_config("identifier", foreground="#343CDA")
+    texto.tag_config("comment", foreground="#A6A6A6")
+    texto.tag_config("keyword", foreground="#1D415E")
+    texto.tag_config("arith", foreground="#C97C34")
+    texto.tag_config("logic_rel", foreground="#C586C0")
+    texto.tag_config("symbol", foreground="#D4D4D4")
+    texto.tag_config("assign", foreground="#12390A")
+    texto.tag_config("string", foreground="#CE9178")
 
-    # 🔹 Palabras reservadas
+    # 🔹 Keywords
     keywords = [
         'if','else','end','do','while','switch','case',
         'int','float','main','cin','cout'
     ]
 
-    # 🔹 Patrones regex
+
+    comment_ranges = []
+
+    for match in re.finditer(r'//.*|/\*[\s\S]*?\*/', content):
+        start_idx = match.start()
+        end_idx = match.end()
+
+        start = f"1.0 + {start_idx}c"
+        end = f"1.0 + {end_idx}c"
+
+        texto.tag_add("comment", start, end)
+        comment_ranges.append((start_idx, end_idx))
+
+
+    def in_comment(pos):
+        for start, end in comment_ranges:
+            if start <= pos < end:
+                return True
+        return False
+
+
     patterns = [
-        ("comment", r'//.*'),
-        ("comment", r'/\*.*?\*/'),
         ("string", r'\".*?\"'),
         ("string", r"\'.*?\'"),
-
-        # números
         ("number", r'\b\d+(\.\d+)?\b'),
-
-        # operadores aritméticos
         ("arith", r'\+\+|--|\+|-|\*|/|%|\^'),
-
-        # relacionales + lógicos
         ("logic_rel", r'<=|>=|==|!=|<|>|\|\||&&|!'),
-
-        # asignación
         ("assign", r'='),
-
-        # símbolos
         ("symbol", r'[\(\)\{\},;]'),
     ]
 
-    # 🔹 Aplicar keywords
-    for kw in keywords:
-        start = "1.0"
-        while True:
-            pos = texto.search(r'\y' + kw + r'\y', start, stopindex="end", regexp=True)
-            if not pos:
-                break
-            end = f"{pos}+{len(kw)}c"
-            texto.tag_add("keyword", pos, end)
-            start = end
 
-    # 🔹 Aplicar regex
+    for kw in keywords:
+        for match in re.finditer(r'\b' + kw + r'\b', content):
+            if in_comment(match.start()):
+                continue
+
+            start = f"1.0 + {match.start()}c"
+            end = f"1.0 + {match.end()}c"
+            texto.tag_add("keyword", start, end)
+
+
     for tag, pattern in patterns:
-        for match in re.finditer(pattern, content, re.DOTALL):
+        for match in re.finditer(pattern, content):
+            if in_comment(match.start()):
+                continue
+
             start = f"1.0 + {match.start()}c"
             end = f"1.0 + {match.end()}c"
             texto.tag_add(tag, start, end)
 
-    # 🔹 Identificadores (al final para no pisar keywords)
-    for match in re.finditer(r'\b[a-zA-Z_][a-zA-Z0-9_]*\b', content):
-        start = f"1.0 + {match.start()}c"
-        end = f"1.0 + {match.end()}c"
 
-        # evitar pintar keywords como identificadores
+    for match in re.finditer(r'\b[a-zA-Z_][a-zA-Z0-9_]*\b', content):
+        if in_comment(match.start()):
+            continue
+
         word = match.group()
+
         if word not in keywords:
+            start = f"1.0 + {match.start()}c"
+            end = f"1.0 + {match.end()}c"
             texto.tag_add("identifier", start, end)

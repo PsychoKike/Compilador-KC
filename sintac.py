@@ -266,6 +266,14 @@ def p_decrement(p):
     else:
         # x--
         p[0] = ASTNode('decrement', [ASTNode('identifier', leaf=p[1])], leaf='post--')
+
+def p_igualdad(p):
+    '''igualdad : igualdad EQ rel
+                | rel'''
+    if len(p) == 4:
+        p[0] = ASTNode('igualdad', [p[1], ASTNode('operator', leaf=p[2]), p[3]])
+    else:
+        p[0] = p[1]
 # Construcción del parser
 parser = yacc.yacc()
 

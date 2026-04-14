@@ -33,7 +33,6 @@ keywords = {
 # ================================
 t_LE = r'<='
 t_GE = r'>='
-t_EQ = r'=='
 t_NE = r'!='
 
 t_LT = r'<'
@@ -58,6 +57,11 @@ def t_AND_OP(t):
 def t_OR_OP(t):
     r'\|\s*\|'
     t.value = '||'
+    return t
+
+def t_EQ(t):
+    r'==|\=\s*\='
+    t.value = '=='
     return t
 
 t_PLUS = r'\+'
@@ -146,7 +150,7 @@ def t_error(t):
     
     t.lexer.errors.append((t.value[0], t.lexer.lineno, column, error_message))
     
-    t.lexer.skip(1)  # 🔥 IMPORTANTE para evitar loops infinitos
+    t.lexer.skip(1)  
 
 # ================================
 # COLUMNA
