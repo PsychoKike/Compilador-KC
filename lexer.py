@@ -5,7 +5,7 @@ import ply.lex as lex
 # ================================
 tokens = (
     'PROGRAM', 'IF', 'ELSE', 'FI', 'DO', 'UNTIL', 'WHILE', 'READ', 'WRITE',
-    'FLOAT', 'INT', 'BOOL', 'NOT_OP', 'AND', 'OR', 'TRUE', 'FALSE', 'BREAK', 'THEN',
+    'FLOAT', 'INT', 'BOOL', 'NOT', 'AND', 'OR', 'TRUE', 'FALSE', 'BREAK', 'THEN',
 
     'PLUS', 'MINUS', 'TIMES', 'DIVIDE', 'POWER', 'MODULO',
 
@@ -66,7 +66,7 @@ t_TIMES = r'\*'
 t_DIVIDE = r'/'
 t_POWER = r'\^'
 t_MODULO = r'%'
-t_NOT_OP = r'!'
+t_NOT = r'!'
 
 
 # ================================
