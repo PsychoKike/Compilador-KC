@@ -4,40 +4,75 @@ import ply.lex as lex
 # TOKENS
 # ================================
 tokens = (
-    'PROGRAM', 'IF', 'ELSE', 'FI', 'DO', 'UNTIL', 'WHILE', 'READ', 'WRITE',
-    'FLOAT', 'INT', 'BOOL', 'NOT', 'AND', 'OR', 'TRUE', 'FALSE', 'BREAK', 'THEN',
+    # Palabras reservadas
+    'MAIN', 'IF', 'ELSE', 'THEN', 'END',
+    'WHILE', 'DO', 'BREAK',
+    'INT', 'FLOAT', 'BOOL',
+    'TRUE', 'FALSE',
+    'CIN', 'COUT',
+    'NOT', 'AND', 'OR',
+    'READ', 'WRITE',  # Mantenemos compatibilidad
 
+    # Operadores aritméticos
     'PLUS', 'MINUS', 'TIMES', 'DIVIDE', 'POWER', 'MODULO',
+    'INCREMENT', 'DECREMENT',
 
-    'LT', 'LE', 'GT', 'GE', 'EQ', 'NE', 'ASSIGN',
+    # Operadores relacionales
+    'LT', 'LE', 'GT', 'GE', 'EQ', 'NE',
+    'ASSIGN',
 
+    # Operadores lógicos (símbolo)
+    'AND_OP', 'OR_OP',
+
+    # Operadores de stream
+    'LSHIFT', 'RSHIFT',
+
+    # Símbolos
     'SEMICOLON', 'COMMA', 'LPAREN', 'RPAREN', 'LBRACE', 'RBRACE',
 
-    'IDENTIFIER', 'NUMBER', 'FLOAT_NUMBER', 'INVALID_FLOAT',
-    
-    # OPERADORES LARGOS (IMPORTANTE: deben ir al final para evitar conflictos con los cortos)
-    'INCREMENT', 'DECREMENT', 'AND_OP', 'OR_OP'
+    # Literales
+    'IDENTIFIER', 'NUMBER', 'FLOAT_NUMBER', 'STRING',
+    'INVALID_FLOAT',
 )
 
 # ================================
 # PALABRAS RESERVADAS
 # ================================
 keywords = {
-    'program', 'if', 'else', 'fi', 'do', 'until', 'while',
-    'read', 'write', 'float', 'int', 'bool',
-    'not', 'and', 'or', 'true', 'false', 'break', 'then'
+    'main':  'MAIN',
+    'if':    'IF',
+    'else':  'ELSE',
+    'then':  'THEN',
+    'end':   'END',
+    'while': 'WHILE',
+    'do':    'DO',
+    'break': 'BREAK',
+    'int':   'INT',
+    'float': 'FLOAT',
+    'bool':  'BOOL',
+    'true':  'TRUE',
+    'false': 'FALSE',
+    'cin':   'CIN',
+    'cout':  'COUT',
+    'not':   'NOT',
+    'and':   'AND',
+    'or':    'OR',
+    # compatibilidad
+    'read':  'READ',
+    'write': 'WRITE',
 }
 
 # ================================
-# OPERADORES (IMPORTANTE: largos primero)
+# OPERADORES (largos primero)
 # ================================
-t_LE = r'<='
-t_GE = r'>='
-t_NE = r'!='
-
-t_LT = r'<'
-t_GT = r'>'
-t_ASSIGN = r'='
+t_LE       = r'<='
+t_GE       = r'>='
+t_NE       = r'!='
+t_LSHIFT   = r'<<'
+t_RSHIFT   = r'>>'
+t_LT       = r'<'
+t_GT       = r'>'
+t_ASSIGN   = r'='
 
 def t_INCREMENT(t):
     r'\+\s*\+'
@@ -64,68 +99,70 @@ def t_EQ(t):
     t.value = '=='
     return t
 
-t_PLUS = r'\+'
-t_MINUS = r'-'
-t_TIMES = r'\*'
-t_DIVIDE = r'/'
-t_POWER = r'\^'
-t_MODULO = r'%'
-t_NOT = r'!'
-
+t_PLUS    = r'\+'
+t_MINUS   = r'-'
+t_TIMES   = r'\*'
+t_DIVIDE  = r'/'
+t_POWER   = r'\^'
+t_MODULO  = r'%'
 
 # ================================
 # SÍMBOLOS
 # ================================
 t_SEMICOLON = r';'
-t_COMMA = r','
-t_LPAREN = r'\('
-t_RPAREN = r'\)'
-t_LBRACE = r'{'
-t_RBRACE = r'}'
+t_COMMA     = r','
+t_LPAREN    = r'\('
+t_RPAREN    = r'\)'
+t_LBRACE    = r'{'
+t_RBRACE    = r'}'
 
 # ================================
 # COMENTARIOS
 # ================================
-
-# // comentario
 def t_COMMENT_SINGLELINE(t):
     r'//.*'
     pass
 
-# /* comentario */
 def t_COMMENT_MULTILINE(t):
     r'/\*[\s\S]*?\*/'
     t.lexer.lineno += t.value.count('\n')
     pass
 
 # ================================
+# CADENAS
+# ================================
+def t_STRING(t):
+    r'"[^"]*"'
+    return t
+
+# ================================
 # IDENTIFICADORES Y KEYWORDS
 # ================================
 def t_IDENTIFIER(t):
     r'[a-zA-Z_][a-zA-Z0-9_]*'
-    if t.value.lower() in keywords:
-        t.type = t.value.upper()
+    t.type = keywords.get(t.value.lower(), 'IDENTIFIER')
     return t
-def t_INVALID_FLOAT(t):
-    r'\d+\.(?!\d)'  
 
+# ================================
+# FLOATS INVÁLIDOS
+# ================================
+def t_INVALID_FLOAT(t):
+    r'\d+\.(?!\d)'
     column = find_column(t.lexer.lexdata, t)
     error_message = f"Invalid float '{t.value}' at line {t.lexer.lineno}, column {column}"
-    
     t.lexer.errors.append((t.value, t.lexer.lineno, column, error_message))
-    
     pass
 
 # ================================
 # NÚMEROS
 # ================================
 def t_FLOAT_NUMBER(t):
-    r'\d+\.\d+'  # Solo números con punto decimal
+    r'\d+\.\d+'
     t.value = float(t.value)
     return t
 
 def t_NUMBER(t):
-    r'\d+'  # Solo enteros
+    r'\d+'
     t.value = int(t.value)
     return t
 
@@ -147,10 +184,8 @@ def t_newline(t):
 def t_error(t):
     column = find_column(t.lexer.lexdata, t)
     error_message = f"Illegal character '{t.value[0]}' at line {t.lexer.lineno}, column {column}"
-    
     t.lexer.errors.append((t.value[0], t.lexer.lineno, column, error_message))
-    
-    t.lexer.skip(1)  
+    t.lexer.skip(1)
 
 # ================================
 # COLUMNA
@@ -171,15 +206,12 @@ lexer.errors = []
 def process_input(input_text):
     lexer.input(input_text)
     tokens_list = []
-
     while True:
         token = lexer.token()
         if not token:
             break
         tokens_list.append(token)
-
     return tokens_list
-
 
 def reset_lexer():
     lexer.lineno = 1

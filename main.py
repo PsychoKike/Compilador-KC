@@ -1,0 +1,168 @@
+import tkinter as tk
+from tkinter import ttk, StringVar, Label
+
+from file_operations import (
+    obtener_texto_actual,
+    crear_pestana,
+    cerrar_pestana_actual,
+)
+
+from menu import create_menu
+from buttons import create_buttons
+
+root        = None
+editor_tabs = None
+coord_label = None
+
+ultima_posicion_cursor = None
+ultimo_texto           = None
+
+
+def actualizar_coordenadas(texto, label):
+    global ultima_posicion_cursor, ultimo_texto
+    try:
+        linea, columna = texto.index("insert").split(".")
+        contenido      = texto.get("1.0", "end-1c")
+        total_lineas   = contenido.count("\n") + 1
+        caracteres     = len(contenido.replace(" ", "").replace("\n", "").replace("\t", ""))
+        label.config(text=(
+            f"Línea: {linea}   Col: {int(columna)+1}   "
+            f"Total líneas: {total_lineas}   Caracteres: {caracteres}"
+        ))
+        posicion_actual = texto.index("insert")
+        if posicion_actual != ultima_posicion_cursor or texto != ultimo_texto:
+            texto.see("insert")
+            ultima_posicion_cursor = posicion_actual
+            ultimo_texto           = texto
+    except Exception:
+        pass
+
+
+def actualizar(event=None):
+    texto_actual = obtener_texto_actual(editor_tabs)
+    if texto_actual:
+        actualizar_coordenadas(texto_actual, coord_label)
+
+
+def create_editor():
+    global root, editor_tabs, coord_label
+
+    root = tk.Tk()
+    root.title("Compilador KC – Fase 2")
+    root.geometry("1400x900")
+
+    button_frame = tk.Frame(root)
+    button_frame.pack(side="top", fill="x")
+
+    frame_principal = tk.Frame(root)
+    frame_principal.pack(fill="both", expand=True)
+
+    # ── EDITOR (izquierda) ──────────────────────
+    frame_editor = tk.Frame(frame_principal)
+    frame_editor.pack(side="left", fill="both", expand=True)
+
+    tab_frame = tk.Frame(frame_editor)
+    tab_frame.pack(fill="x")
+
+    editor_tabs = ttk.Notebook(tab_frame)
+    editor_tabs.pack(side="left", fill="x", expand=True)
+
+    tk.Button(
+        tab_frame, text="✖",
+        font=("Arial", 12, "bold"), fg="red", bd=10, padx=10,
+        command=lambda: cerrar_pestana_actual(editor_tabs, actualizar)
+    ).pack(side="right", padx=(5, 5), pady=5)
+
+    editor_tabs.bind("<<NotebookTabChanged>>", actualizar)
+    root.bind("<Control-w>", lambda e: cerrar_pestana_actual(editor_tabs, actualizar))
+    root.bind("<Control-W>", lambda e: cerrar_pestana_actual(editor_tabs, actualizar))
+
+    # ── BARRA DE COORDENADAS ────────────────────
+    coord_frame = tk.Frame(root, bg="#e0e0e0", height=25)
+    coord_frame.pack(fill="x")
+    coord_label = Label(
+        coord_frame,
+        text="Línea: 1   Col: 1   Total líneas: 1   Caracteres: 0",
+        font=("Consolas", 9), bg="#e0e0e0", anchor="w"
+    )
+    coord_label.pack(side="left", padx=10)
+
+    crear_pestana(editor_tabs, "Nuevo archivo", "")
+    actualizar()
+
+    # ── PANEL DERECHO (ANÁLISIS) ────────────────
+    frame_derecha = tk.Frame(frame_principal)
+    frame_derecha.pack(side="right", fill="both", expand=True)
+
+    analisis_tabs    = ttk.Notebook(frame_derecha)
+    frame_lexico     = tk.Frame(analisis_tabs, bg="#1e1e2e")
+    frame_sintactico = tk.Frame(analisis_tabs, bg="#1e1e2e")
+    frame_semantico  = tk.Frame(analisis_tabs)
+    frame_hash       = tk.Frame(analisis_tabs)
+    frame_intermedio = tk.Frame(analisis_tabs)
+
+    analisis_tabs.add(frame_lexico,     text="Análisis Léxico")
+    analisis_tabs.add(frame_sintactico, text="Árbol Sintáctico")
+    analisis_tabs.add(frame_semantico,  text="Semántico")
+    analisis_tabs.add(frame_hash,       text="Hash Table")
+    analisis_tabs.add(frame_intermedio, text="Cód. Intermedio")
+    analisis_tabs.pack(fill="both", expand=True)
+
+    # ── MENSAJE DE ESTADO ───────────────────────
+    mensaje = StringVar()
+    mensaje.set("Bienvenido a Compilador KC – Fase 2")
+    Label(root, textvariable=mensaje, font=("Consolas", 9)).pack(
+        side="bottom", anchor="w", padx=10)
+
+    # ── NOTEBOOK DE SALIDA (errores) ────────────
+    notebook_output = ttk.Notebook(root)
+    notebook_output.config(height=200)
+    notebook_output.pack(side="bottom", fill="x")
+
+    frame_results  = tk.Frame(notebook_output)
+    frame_err_lex  = tk.Frame(notebook_output, bg="#1e1e2e")   # errores léxicos
+    frame_err_sin  = tk.Frame(notebook_output, bg="#1e1e2e")   # errores sintácticos
+    frame_err_sem  = tk.Frame(notebook_output)
+
+    notebook_output.add(frame_results, text="Resultados")
+    notebook_output.add(frame_err_lex, text="Err. Léxicos")
+    notebook_output.add(frame_err_sin, text="Err. Sintácticos")
+    notebook_output.add(frame_err_sem, text="Err. Semánticos")
+
+    pantalla_resultados = tk.Text(frame_results)
+    pantalla_resultados.pack(fill="both", expand=True)
+
+    # pantalla_errores legacy (Text) — solo fallback, no se usa si frame_err_lex existe
+    pantalla_errores = tk.Text(frame_results)
+
+    # ── MENÚ ────────────────────────────────────
+    create_menu(root, mensaje, editor_tabs)
+
+    # ── BOTONES ─────────────────────────────────
+    create_buttons(
+        button_frame,
+        editor_tabs,
+        mensaje,
+        pantalla_errores,
+        frame_lexico,
+        frame_sintactico,
+        frame_semantico,
+        frame_hash,
+        frame_intermedio,
+        frame_err_sin=frame_err_sin,
+        frame_err_lex=frame_err_lex,
+    )
+
+    # ── LOOP DE ACTUALIZACIÓN ───────────────────
+    def loop_actualizacion():
+        texto_actual = obtener_texto_actual(editor_tabs)
+        if texto_actual:
+            actualizar_coordenadas(texto_actual, coord_label)
+        root.after(16, loop_actualizacion)
+
+    loop_actualizacion()
+    root.mainloop()
+
+
+if __name__ == "__main__":
+    create_editor()

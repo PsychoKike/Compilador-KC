@@ -1,68 +1,71 @@
-# buttons.py corregido
 import os
-from tkinter import Button
 import tkinter as tk
+from tkinter import Button
 from file_operations import nuevo, abrir, guardar, guardar_como, run_command
-import tkinter
 
-# Lista para mantener referencias globales a las imágenes
 images = []
 
 def resize_image(image_path, width, height):
-    original_image = tkinter.PhotoImage(file=image_path)
-    resized_image = original_image.subsample(width, height)
-    images.append(resized_image)  
-    return resized_image
+    import tkinter
+    img = tkinter.PhotoImage(file=image_path)
+    img = img.subsample(width, height)
+    images.append(img)
+    return img
 
-def create_buttons(button_frame, editor_tabs, mensaje, pantalla_errores, frame_lexico, frame_sintactico,
-                  frame_semantico, frame_hash, frame_intermedio):
 
-    # --- ICONOS (Operaciones de Archivo) ---
+def create_buttons(button_frame, editor_tabs, mensaje, pantalla_errores,
+                   frame_lexico, frame_sintactico, frame_semantico,
+                   frame_hash, frame_intermedio,
+                   frame_err_sin=None, frame_err_lex=None):
+
     try:
-        img_new = resize_image(os.path.abspath("img/new.png"), 2, 2)
-        img_open = resize_image(os.path.abspath("img/open.png"), 2, 2)
-        img_save = resize_image(os.path.abspath("img/save.png"), 2, 2)
+        img_new     = resize_image(os.path.abspath("img/new.png"),     2, 2)
+        img_open    = resize_image(os.path.abspath("img/open.png"),    2, 2)
+        img_save    = resize_image(os.path.abspath("img/save.png"),    2, 2)
         img_save_as = resize_image(os.path.abspath("img/save_as.png"), 2, 2)
-        img_run = resize_image(os.path.abspath("img/run.png"), 2, 2)
+        img_run     = resize_image(os.path.abspath("img/run.png"),     2, 2)
     except Exception as e:
-        print(f"Advertencia: No se pudieron cargar las imágenes: {e}")
-        # Definimos variables vacías para que no truene si no hay imágenes
+        print(f"Advertencia: No se pudieron cargar imágenes: {e}")
         img_new = img_open = img_save = img_save_as = img_run = None
 
-    # --- BOTONES DE ACCIÓN RÁPIDA ---
-    Button(button_frame, image=img_new, command=lambda: nuevo(editor_tabs, mensaje)).pack(side='left', padx=2)
-    Button(button_frame, image=img_open, command=lambda: abrir(editor_tabs, mensaje)).pack(side='left', padx=2)
-    Button(button_frame, image=img_save, command=lambda: guardar(editor_tabs, mensaje)).pack(side='left', padx=2)
-    Button(button_frame, image=img_save_as, command=lambda: guardar_como(editor_tabs, mensaje)).pack(side='left', padx=2)
-    
-    # Separador visual
-    tk.Frame(button_frame, width=2, bd=1, relief="sunken").pack(side='left', padx=10, fill='y')
+    # Botones de archivo
+    Button(button_frame, image=img_new,
+           command=lambda: nuevo(editor_tabs, mensaje)).pack(side='left', padx=2)
+    Button(button_frame, image=img_open,
+           command=lambda: abrir(editor_tabs, mensaje)).pack(side='left', padx=2)
+    Button(button_frame, image=img_save,
+           command=lambda: guardar(editor_tabs, mensaje)).pack(side='left', padx=2)
+    Button(button_frame, image=img_save_as,
+           command=lambda: guardar_como(editor_tabs, mensaje)).pack(side='left', padx=2)
 
-    # --- BOTONES DE ANÁLISIS ---
-    btn_params = {
-        "padx": 8, 
-        "pady": 2, 
-        "relief": "raised", 
-        "bg": "#e1e1e1",
-        "font": ("Segoe UI", 9, "bold")
-    }
+    tk.Frame(button_frame, width=2, bd=1, relief="sunken").pack(
+        side='left', padx=10, fill='y')
 
-    # Botón Run (Léxico + Sintáctico por defecto)
-    Button(button_frame, image=img_run, 
-           command=lambda: run_command(editor_tabs, mensaje, frame_lexico, pantalla_errores, frame_sintactico),
-           **btn_params).pack(side='left', padx=5)
+    btn_params = dict(padx=8, pady=2, relief="raised",
+                      bg="#e1e1e1", font=("Segoe UI", 9, "bold"))
 
-    # Botón Semántico (Cambiamos 'container' por 'button_frame')
-    tk.Button(button_frame, text="🧪 Semántico", 
-              command=lambda: print("Ejecutando Semántico..."),
+    # Botón Run → Léxico + Sintáctico
+    Button(
+        button_frame,
+        image=img_run,
+        command=lambda: run_command(
+            editor_tabs, mensaje,
+            frame_lexico, pantalla_errores,
+            frame_sintactico,
+            frame_err_sin=frame_err_sin,
+            frame_err_lex=frame_err_lex,
+        ),
+        **btn_params
+    ).pack(side='left', padx=5)
+
+    tk.Button(button_frame, text="🧪 Semántico",
+              command=lambda: mensaje.set("Semántico: próximamente..."),
               **btn_params).pack(side="left", padx=2)
 
-    # Botón Hash Table
-    tk.Button(button_frame, text="📋 Hash Table", 
-              command=lambda: print("Mostrando Tabla de Símbolos..."),
+    tk.Button(button_frame, text="📋 Hash Table",
+              command=lambda: mensaje.set("Hash Table: próximamente..."),
               **btn_params).pack(side="left", padx=2)
 
-    # Botón Código Intermedio
-    tk.Button(button_frame, text="⚙️ Cód. Intermedio", 
-              command=lambda: print("Generando Código Intermedio..."),
+    tk.Button(button_frame, text="⚙️ Cód. Intermedio",
+              command=lambda: mensaje.set("Código Intermedio: próximamente..."),
               **btn_params).pack(side="left", padx=2)
