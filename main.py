@@ -18,6 +18,8 @@ ultima_posicion_cursor = None
 ultimo_texto           = None
 
 
+
+
 def actualizar_coordenadas(texto, label):
     global ultima_posicion_cursor, ultimo_texto
     try:

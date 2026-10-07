@@ -45,10 +45,12 @@ keywords = {
     'then':  'THEN',
     'end':   'END',
     'while': 'WHILE',
+    'until': 'WHILE',   # until → tratado como while
     'do':    'DO',
     'break': 'BREAK',
     'int':   'INT',
     'float': 'FLOAT',
+    'real':  'FLOAT',   # real → tratado como float
     'bool':  'BOOL',
     'true':  'TRUE',
     'false': 'FALSE',

@@ -128,21 +128,16 @@ def guardar_como(editor_tabs, mensaje):
 
 
 # ============================================
-# PANEL GENÉRICO DE ERRORES (tabla con
-# Tipo | Línea | Columna | Descripción)
+# PANEL GENÉRICO DE ERRORES
 # ============================================
 
 def build_error_panel(frame, errors, titulo="⚠️  Errores"):
-    """
-    errors: lista de tuplas (tipo, linea, columna, descripcion)
-    o lista de strings (se parsean automáticamente).
-    """
     for child in frame.winfo_children():
         child.destroy()
 
-    color_bg  = "#1e1e2e"
-    color_fg  = "#f38ba8"
-    color_ok  = "#a6e3a1"
+    color_bg = "#1e1e2e"
+    color_fg = "#f38ba8"
+    color_ok = "#a6e3a1"
 
     header = tk.Label(
         frame,
@@ -184,17 +179,14 @@ def build_error_panel(frame, errors, titulo="⚠️  Errores"):
     for err in errors:
         if isinstance(err, (tuple, list)):
             if len(err) == 4:
-                # Léxico: (lexema, linea, col, mensaje)
                 _, linea, col, desc = err
                 tipo = "Léxico"
             elif len(err) == 3:
-                # Sintáctico: (linea, col, mensaje)
                 linea, col, desc = err
                 tipo = "Sintáctico"
             else:
                 linea, col, desc, tipo = "-", "-", str(err), "?"
         else:
-            # String plano — intentar extraer línea y columna
             desc  = err
             linea = "-"
             col   = "-"
@@ -328,10 +320,8 @@ def run_command(editor_tabs, mensaje, frame_lexico,
                 pantalla_errores, frame_sintactico,
                 frame_err_sin=None, frame_err_lex=None):
     """
-    Ejecuta léxico Y sintáctico siempre.
-    Los errores léxicos van a frame_err_lex (o pantalla_errores).
-    Los errores sintácticos van a frame_err_sin.
-    Ambos paneles usan tabla con Tipo | Línea | Columna | Descripción.
+    Ejecuta léxico Y sintáctico SIEMPRE.
+    El árbol se construye pase lo que pase.
     """
     texto = obtener_texto_actual(editor_tabs)
     if not texto:
@@ -339,15 +329,15 @@ def run_command(editor_tabs, mensaje, frame_lexico,
         return
 
     input_text = texto.get("1.0", "end-1c")
-    reset_lexer()
 
     # ── LÉXICO ──────────────────────────────────
     mensaje.set("Ejecutando análisis léxico...")
 
+    reset_lexer()
+
     for child in frame_lexico.winfo_children():
         child.destroy()
 
-    # Tabla de tokens reconocidos
     tok_tree = ttk.Treeview(
         frame_lexico,
         columns=('Token', 'Lexema', 'Línea', 'Columna'),
@@ -374,12 +364,9 @@ def run_command(editor_tabs, mensaje, frame_lexico,
                         values=(token.type, token.value,
                                 token.lineno, token.lexpos))
 
-    # Mostrar errores léxicos en su panel
-    # lex_errors es lista de (lexema, linea, col, mensaje)
     if frame_err_lex is not None:
         build_error_panel(frame_err_lex, lex_errors, "⚠️  Errores Léxicos")
     else:
-        # Fallback: pantalla_errores legacy (tk.Text)
         pantalla_errores.config(state='normal')
         pantalla_errores.delete("1.0", END)
         for err in lex_errors:
@@ -387,16 +374,14 @@ def run_command(editor_tabs, mensaje, frame_lexico,
         pantalla_errores.config(state='disabled')
 
     if lex_errors:
-        mensaje.set(f"⚠️  Análisis léxico: {len(lex_errors)} error(es) – continuando con sintáctico...")
+        mensaje.set(f"⚠️  Léxico: {len(lex_errors)} error(es) – construyendo árbol de todos modos...")
     else:
-        mensaje.set("✅ Análisis léxico completado – ejecutando análisis sintáctico...")
+        mensaje.set("✅ Análisis léxico OK – ejecutando análisis sintáctico...")
 
-    # ── SINTÁCTICO (siempre se ejecuta) ─────────
-    # Pasamos el código fuente ORIGINAL, no tokens reconstruidos,
-    # para que PLY conserve líneas y columnas reales.
+    # ── SINTÁCTICO (SIEMPRE se ejecuta, SIEMPRE genera árbol) ───
     run_syntax_analysis(
         mensaje,
-        input_text,          # <-- código fuente original
+        input_text,
         frame_sintactico,
         pantalla_errores,
         tokens,
@@ -414,20 +399,21 @@ def run_syntax_analysis(mensaje, texto, frame_sintactico,
     for child in frame_sintactico.winfo_children():
         child.destroy()
 
+    # parse_code resetea el lexer internamente y SIEMPRE devuelve árbol
     result, sin_errors = parse_code(texto)
 
-    # Panel de errores sintácticos
-    # sin_errors es lista de strings con "línea X, columna Y"
     if frame_err_sin is not None:
         build_error_panel(frame_err_sin, sin_errors, "⚠️  Errores Sintácticos")
 
-    # result siempre existe (árbol completo o parcial con nodos de error)
+    # result NUNCA es None gracias al nuevo parse_code
     calculate_levels(result)
     build_tree_view(frame_sintactico, result)
     nodos = count_nodes(result)
 
-    if sin_errors:
-        mensaje.set(f"⚠️  AST parcial – {len(sin_errors)} error(es) | {nodos} nodos")
+    if sin_errors and lex_had_errors:
+        mensaje.set(f"⚠️  AST construido con errores léxicos y sintácticos | {nodos} nodos")
+    elif sin_errors:
+        mensaje.set(f"⚠️  AST parcial – {len(sin_errors)} error(es) sintáctico(s) | {nodos} nodos")
     elif lex_had_errors:
         mensaje.set(f"⚠️  AST construido con advertencias léxicas | {nodos} nodos")
     else:
@@ -535,3 +521,14 @@ def highlight_syntax(texto):
                 texto.tag_add("identifier",
                               f"1.0 + {match.start()}c",
                               f"1.0 + {match.end()}c")
+
+
+def aumentar_fuente(texto):
+    actual_size = texto.cget("font").split()[1]
+    nueva_size = int(actual_size) + 1
+    texto.config(font=("Consolas", nueva_size))
+
+def disminuir_fuente(texto):
+    actual_size = texto.cget("font").split()[1]
+    nueva_size = max(1, int(actual_size) - 1)
+    texto.config(font=("Consolas", nueva_size))
