@@ -50,7 +50,7 @@ def create_editor():
     global root, editor_tabs, coord_label
 
     root = tk.Tk()
-    root.title("Compilador KC – Fase 2")
+    root.title("Compilador KC – Fase 3")
     root.geometry("1400x900")
 
     button_frame = tk.Frame(root)
@@ -112,7 +112,7 @@ def create_editor():
 
     # ── MENSAJE DE ESTADO ───────────────────────
     mensaje = StringVar()
-    mensaje.set("Bienvenido a Compilador KC – Fase 2")
+    mensaje.set("Bienvenido a Compilador KC – Fase 3")
     Label(root, textvariable=mensaje, font=("Consolas", 9)).pack(
         side="bottom", anchor="w", padx=10)
 
@@ -153,6 +153,7 @@ def create_editor():
         frame_intermedio,
         frame_err_sin=frame_err_sin,
         frame_err_lex=frame_err_lex,
+        frame_err_sem=frame_err_sem,
     )
 
     # ── LOOP DE ACTUALIZACIÓN ───────────────────

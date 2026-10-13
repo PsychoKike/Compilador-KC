@@ -3,6 +3,7 @@ from io import open
 from lexer import reset_lexer
 from test_lexer import test_lexer
 from sintac import calculate_levels, parse_code
+from semantico import analizar_semantica
 from tab_widget import TabWithCloseButton
 import tkinter as tk
 
@@ -131,7 +132,7 @@ def guardar_como(editor_tabs, mensaje):
 # PANEL GENÉRICO DE ERRORES
 # ============================================
 
-def build_error_panel(frame, errors, titulo="⚠️  Errores"):
+def build_error_panel(frame, errors, titulo="⚠️  Errores", tipo_fijo=None):
     for child in frame.winfo_children():
         child.destroy()
 
@@ -195,6 +196,9 @@ def build_error_panel(frame, errors, titulo="⚠️  Errores"):
             if m:
                 linea = m.group(1)
                 col   = m.group(2)
+
+        if tipo_fijo:
+            tipo = tipo_fijo
 
         tree.insert("", "end",
                     values=(tipo, linea, col, desc),
@@ -418,6 +422,202 @@ def run_syntax_analysis(mensaje, texto, frame_sintactico,
         mensaje.set(f"⚠️  AST construido con advertencias léxicas | {nodos} nodos")
     else:
         mensaje.set(f"✅ Análisis completo sin errores | {nodos} nodos en el AST")
+
+
+# ============================================
+# ANÁLISIS SEMÁNTICO
+# ============================================
+
+def run_semantic_analysis(editor_tabs, mensaje, frame_lexico,
+                          pantalla_errores, frame_sintactico,
+                          frame_semantico, frame_hash,
+                          frame_err_sin=None, frame_err_lex=None,
+                          frame_err_sem=None, mostrar=True):
+    """
+    Ejecuta léxico + sintáctico (refresca sus paneles) y después el
+    análisis semántico sobre una copia profunda del AST.
+    mostrar=True cambia a las pestañas del resultado semántico.
+    """
+    texto = obtener_texto_actual(editor_tabs)
+    if not texto:
+        mensaje.set("No hay archivo abierto")
+        return
+
+    run_command(editor_tabs, mensaje, frame_lexico, pantalla_errores,
+                frame_sintactico, frame_err_sin=frame_err_sin,
+                frame_err_lex=frame_err_lex)
+
+    mensaje.set("Ejecutando análisis semántico...")
+
+    ast, sin_errors = parse_code(texto.get("1.0", "end-1c"))
+    anotado, tabla, sem_errors = analizar_semantica(ast)
+    calculate_levels(anotado)
+
+    build_annotated_tree_view(frame_semantico, anotado)
+    build_symbol_table_view(frame_hash, tabla)
+    if frame_err_sem is not None:
+        build_error_panel(frame_err_sem, sem_errors, "⚠️  Errores Semánticos",
+                          tipo_fijo="Semántico")
+        if mostrar:
+            frame_err_sem.master.select(frame_err_sem)
+
+    # Mostrar el resultado: cambiar a la pestaña del árbol anotado
+    if mostrar:
+        frame_semantico.master.select(frame_semantico)
+
+    simbolos = len(tabla.entradas)
+    if sem_errors:
+        mensaje.set(f"⚠️  Semántico: {len(sem_errors)} error(es) | {simbolos} símbolos en la tabla")
+    elif sin_errors:
+        mensaje.set(f"⚠️  Semántico sin errores sobre un AST con errores sintácticos | {simbolos} símbolos")
+    else:
+        mensaje.set(f"✅ Análisis semántico sin errores | {simbolos} símbolos en la tabla")
+
+
+# ============================================
+# ÁRBOL ANOTADO (AST + atributos semánticos)
+# ============================================
+
+def build_annotated_tree_view(frame, ast_root):
+    for child in frame.winfo_children():
+        child.destroy()
+
+    color_bg = "#1e1e2e"
+
+    tk.Label(
+        frame,
+        text="🌳  Árbol con anotaciones semánticas (copia del AST)",
+        font=("Consolas", 10, "bold"),
+        bg=color_bg, fg="#cdd6f4",
+        pady=6, anchor="w", padx=8
+    ).pack(fill="x")
+
+    vsb = tk.Scrollbar(frame, orient="vertical")
+    hsb = tk.Scrollbar(frame, orient="horizontal")
+
+    cols = ("lexema", "tipo", "dtype", "valor", "conversion",
+            "ambito", "dir", "pos", "error")
+    tree = ttk.Treeview(
+        frame,
+        columns=cols,
+        show="tree headings",
+        yscrollcommand=vsb.set,
+        xscrollcommand=hsb.set,
+        selectmode="browse"
+    )
+
+    vsb.config(command=tree.yview)
+    hsb.config(command=tree.xview)
+
+    vsb.pack(side="right", fill="y")
+    hsb.pack(side="bottom", fill="x")
+    tree.pack(fill="both", expand=True)
+
+    encabezados = {
+        "lexema":     ("Lexema / Valor", 100),
+        "tipo":       ("tipo",           60),
+        "dtype":      ("dtype",          60),
+        "valor":      ("valor",          60),
+        "conversion": ("Conversión",     80),
+        "ambito":     ("Ámbito",         80),
+        "dir":        ("Dir.",           45),
+        "pos":        ("Lín:Col",        60),
+        "error":      ("Error",          60),
+    }
+    tree.heading("#0", text="Nodo")
+    tree.column("#0", width=200, stretch=True)
+    for col, (texto, ancho) in encabezados.items():
+        tree.heading(col, text=texto)
+        tree.column(col, width=ancho, anchor="center")
+
+    tree.tag_configure("normal", background="#1e1e2e", foreground="#cdd6f4")
+    tree.tag_configure("tipado", background="#181825", foreground="#a6e3a1")
+    tree.tag_configure("error",  background="#181825", foreground="#f38ba8")
+
+    def attr(node, nombre):
+        valor = getattr(node, nombre, None)
+        return "" if valor is None else str(valor)
+
+    def insert_node(parent_id, node):
+        if node is None:
+            return
+        label = f"{node.type}: {node.leaf}" if node.leaf is not None else node.type
+        pos = f"{node.lineno}:{node.col}" if node.lineno is not None and node.col is not None \
+            else attr(node, "lineno")
+        if getattr(node, "error_sem", None):
+            tag = "error"
+        elif getattr(node, "tipo", None) or getattr(node, "dtype", None):
+            tag = "tipado"
+        else:
+            tag = "normal"
+        item_id = tree.insert(
+            parent_id, "end",
+            text=label,
+            values=(
+                "" if node.leaf is None else str(node.leaf),
+                attr(node, "tipo"),
+                attr(node, "dtype"),
+                attr(node, "valor"),
+                attr(node, "conversion"),
+                attr(node, "ambito"),
+                attr(node, "direccion"),
+                pos,
+                attr(node, "error_sem"),
+            ),
+            tags=(tag,),
+            open=True
+        )
+        for child in node.children:
+            if child is not None:
+                insert_node(item_id, child)
+
+    if ast_root:
+        insert_node("", ast_root)
+
+
+# ============================================
+# TABLA DE SÍMBOLOS
+# ============================================
+
+def build_symbol_table_view(frame, tabla):
+    for child in frame.winfo_children():
+        child.destroy()
+
+    color_bg = "#1e1e2e"
+
+    tk.Label(
+        frame,
+        text=f"📋  Tabla de símbolos  ({len(tabla.entradas)} identificadores)",
+        font=("Consolas", 10, "bold"),
+        bg=color_bg, fg="#cdd6f4",
+        pady=6, anchor="w", padx=8
+    ).pack(fill="x")
+
+    cols = ("nombre", "tipo", "direccion", "ambito", "lineas")
+    tree = ttk.Treeview(frame, columns=cols, show="headings")
+
+    tree.heading("nombre",    text="Nombre")
+    tree.heading("tipo",      text="Tipo")
+    tree.heading("direccion", text="Dirección")
+    tree.heading("ambito",    text="Ámbito")
+    tree.heading("lineas",    text="Líneas (declaración, usos)")
+
+    tree.column("nombre",    width=100, anchor="center")
+    tree.column("tipo",      width=70,  anchor="center")
+    tree.column("direccion", width=80,  anchor="center")
+    tree.column("ambito",    width=100, anchor="center")
+    tree.column("lineas",    width=300, anchor="w")
+
+    vsb = tk.Scrollbar(frame, orient="vertical", command=tree.yview)
+    tree.configure(yscrollcommand=vsb.set)
+    vsb.pack(side="right", fill="y")
+    tree.pack(fill="both", expand=True)
+
+    for s in tabla.entradas:
+        tree.insert("", "end", values=(
+            s.nombre, s.tipo, s.direccion, s.ambito,
+            ", ".join(str(l) for l in s.lineas)
+        ))
 
 
 # ============================================

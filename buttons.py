@@ -1,7 +1,8 @@
 import os
 import tkinter as tk
 from tkinter import Button
-from file_operations import nuevo, abrir, guardar, guardar_como, run_command
+from file_operations import (nuevo, abrir, guardar, guardar_como, run_command,
+                             run_semantic_analysis)
 
 images = []
 
@@ -16,7 +17,7 @@ def resize_image(image_path, width, height):
 def create_buttons(button_frame, editor_tabs, mensaje, pantalla_errores,
                    frame_lexico, frame_sintactico, frame_semantico,
                    frame_hash, frame_intermedio,
-                   frame_err_sin=None, frame_err_lex=None):
+                   frame_err_sin=None, frame_err_lex=None, frame_err_sem=None):
 
     try:
         img_new     = resize_image(os.path.abspath("img/new.png"),     2, 2)
@@ -44,22 +45,34 @@ def create_buttons(button_frame, editor_tabs, mensaje, pantalla_errores,
     btn_params = dict(padx=8, pady=2, relief="raised",
                       bg="#e1e1e1", font=("Segoe UI", 9, "bold"))
 
-    # Botón Run → Léxico + Sintáctico
+    # Botón Run → Léxico + Sintáctico + Semántico (llena todas las listas de errores)
     Button(
         button_frame,
         image=img_run,
-        command=lambda: run_command(
+        command=lambda: run_semantic_analysis(
             editor_tabs, mensaje,
             frame_lexico, pantalla_errores,
             frame_sintactico,
+            frame_semantico, frame_hash,
             frame_err_sin=frame_err_sin,
             frame_err_lex=frame_err_lex,
+            frame_err_sem=frame_err_sem,
+            mostrar=False,
         ),
         **btn_params
     ).pack(side='left', padx=5)
 
+    # Botón Semántico → Léxico + Sintáctico + Semántico (árbol anotado, tabla y errores)
     tk.Button(button_frame, text="🧪 Semántico",
-              command=lambda: mensaje.set("Semántico: próximamente..."),
+              command=lambda: run_semantic_analysis(
+                  editor_tabs, mensaje,
+                  frame_lexico, pantalla_errores,
+                  frame_sintactico,
+                  frame_semantico, frame_hash,
+                  frame_err_sin=frame_err_sin,
+                  frame_err_lex=frame_err_lex,
+                  frame_err_sem=frame_err_sem,
+              ),
               **btn_params).pack(side="left", padx=2)
 
     tk.Button(button_frame, text="📋 Hash Table",

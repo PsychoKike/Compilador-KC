@@ -18,14 +18,25 @@ syntax_errors = []
 _error_nodes  = []
 
 class ASTNode:
-    def __init__(self, type, children=None, leaf=None, level=1, lineno=None):
+    def __init__(self, type, children=None, leaf=None, level=1, lineno=None, col=None):
         self.type     = type
         self.children = children if children is not None else []
         self.leaf     = leaf
         self.level    = level
         self.lineno   = lineno
+        self.col      = col
     def __repr__(self):
         return f"ASTNode({self.type}, leaf={self.leaf})"
+
+# Columna (base 1) del símbolo i de la producción, usando lexpos del token
+def _col(p, i):
+    data  = p.lexer.lexdata
+    start = data.rfind('\n', 0, p.lexpos(i)) + 1
+    return p.lexpos(i) - start + 1
+
+# Nodo hoja (identificador o literal) con lexema, línea y columna
+def _hoja(p, i):
+    return ASTNode(str(p[i]), leaf=p[i], lineno=p.lineno(i), col=_col(p, i))
 
 def calculate_levels(node, level=1):
     if node is None:
@@ -81,22 +92,22 @@ def p_item_contenido(p):
 def p_declaracion_variable(p):
     '''declaracion_variable : tipo lista_ids SEMICOLON'''
     p[1].children = p[2].children
-    p[0] = ASTNode("declaracion", [p[1]])
+    p[0] = ASTNode("declaracion", [p[1]], lineno=p[1].lineno, col=p[1].col)
 
 def p_tipo(p):
     '''tipo : INT
             | FLOAT
             | BOOL'''
-    p[0] = ASTNode(p[1].lower())
+    p[0] = ASTNode(p[1].lower(), lineno=p.lineno(1), col=_col(p, 1))
 
 def p_lista_ids_multi(p):
     '''lista_ids : lista_ids COMMA IDENTIFIER'''
-    p[1].children.append(ASTNode(p[3], leaf=p[3]))
+    p[1].children.append(_hoja(p, 3))
     p[0] = p[1]
 
 def p_lista_ids_uno(p):
     '''lista_ids : IDENTIFIER'''
-    p[0] = ASTNode("ids", [ASTNode(p[1], leaf=p[1])])
+    p[0] = ASTNode("ids", [_hoja(p, 1)])
 
 # ================================================================
 # SENTENCIAS
@@ -121,27 +132,26 @@ def p_sentencia(p):
 def p_sent_incr(p):
     '''sent_incr : IDENTIFIER INCREMENT SEMICOLON
                  | INCREMENT IDENTIFIER SEMICOLON'''
-    var_name = p[1] if p[2] == '++' else p[2]
-    p[0] = ASTNode(var_name, leaf=var_name)
+    p[0] = _hoja(p, 1 if p[2] == '++' else 2)
 
 def p_sent_decr(p):
     '''sent_decr : IDENTIFIER DECREMENT SEMICOLON
                  | DECREMENT IDENTIFIER SEMICOLON'''
-    var_name = p[1] if p[2] == '--' else p[2]
-    p[0] = ASTNode(var_name, leaf=var_name)
+    p[0] = _hoja(p, 1 if p[2] == '--' else 2)
 
 def p_asignacion(p):
     '''asignacion : IDENTIFIER ASSIGN expresion SEMICOLON'''
     p[0] = ASTNode("=", [
-        ASTNode(p[1], leaf=p[1]),
+        _hoja(p, 1),
         p[3]
-    ])
+    ], lineno=p.lineno(2), col=_col(p, 2))
 
 # ================================================================
 # IF
 # ================================================================
 def p_sent_if_std(p):
-    '''sent_if : IF expresion THEN lista_contenido parte_else END SEMICOLON'''
+    '''sent_if : IF expresion THEN lista_contenido parte_else END SEMICOLON
+               | IF expresion THEN lista_contenido parte_else END'''
     p[0] = ASTNode('if', [
         ASTNode('condicion', [p[2]]),
         ASTNode('entonces',  [p[4]]),
@@ -185,8 +195,10 @@ def p_parte_else(p):
 # ================================================================
 def p_sent_while_std(p):
     '''sent_while : WHILE expresion DO lista_contenido END SEMICOLON
-                  | WHILE expresion lista_contenido END SEMICOLON'''
-    cuerpo = p[4] if p[3].lower() == 'do' else p[3]
+                  | WHILE expresion lista_contenido END SEMICOLON
+                  | WHILE expresion DO lista_contenido END
+                  | WHILE expresion lista_contenido END'''
+    cuerpo = p[4] if isinstance(p[3], str) else p[3]
     p[0] = ASTNode('while', [
         ASTNode('condicion', [p[2]]),
         ASTNode('cuerpo',    [cuerpo]),
@@ -226,6 +238,15 @@ def p_sent_do_std(p):
         ASTNode('condicion', [p[4]]),
     ], lineno=p.lineno(1))
 
+# DO ... UNTIL (con o sin punto y coma final)
+def p_sent_do_until(p):
+    '''sent_do : DO lista_contenido UNTIL expresion
+               | DO lista_contenido UNTIL expresion SEMICOLON'''
+    p[0] = ASTNode('do-until', [
+        ASTNode('cuerpo',    [p[2]]),
+        ASTNode('condicion', [p[4]]),
+    ], lineno=p.lineno(1))
+
 def p_sent_do_paren(p):
     '''sent_do : DO lista_contenido WHILE LPAREN expresion RPAREN SEMICOLON'''
     p[0] = ASTNode('do-while', [
@@ -248,8 +269,9 @@ def p_sent_do_bloque(p):
 def p_sent_cin(p):
     '''sent_cin : CIN RSHIFT IDENTIFIER SEMICOLON
                 | CIN IDENTIFIER SEMICOLON'''
-    name = p[3] if p[2] == '>>' else p[2]
-    p[0] = ASTNode('cin', [ASTNode('id', leaf=name)], lineno=p.lineno(1))
+    i = 3 if p[2] == '>>' else 2
+    p[0] = ASTNode('cin', [ASTNode('id', leaf=p[i], lineno=p.lineno(i), col=_col(p, i))],
+                   lineno=p.lineno(1))
 
 def p_sent_cout(p):
     '''sent_cout : COUT LSHIFT salida SEMICOLON
@@ -282,25 +304,26 @@ def p_bloque(p):
 # ================================================================
 def p_expresion_rel(p):
     '''expresion : expresion_simple rel_op expresion_simple'''
-    p[0] = ASTNode(p[2].leaf, [p[1], p[3]])
+    p[0] = ASTNode(p[2].leaf, [p[1], p[3]], lineno=p[2].lineno, col=p[2].col)
 
 def p_expresion_logica(p):
     '''expresion : expresion AND_OP expresion
                  | expresion OR_OP  expresion
                  | expresion AND    expresion
                  | expresion OR     expresion'''
-    p[0] = ASTNode(p[2], [p[1], p[3]])
+    p[0] = ASTNode(p[2], [p[1], p[3]], lineno=p.lineno(2), col=_col(p, 2))
 
 def p_expresion_logica_error(p):
     '''expresion : expresion AND_OP error
                  | expresion OR_OP error
                  | expresion AND error
                  | expresion OR error'''
-    p[0] = ASTNode(p[2], [p[1], ASTNode('error_expresion', leaf='operando faltante')])
+    p[0] = ASTNode(p[2], [p[1], ASTNode('error_expresion', leaf='operando faltante')],
+                   lineno=p.lineno(2), col=_col(p, 2))
 
 def p_expresion_not(p):
     '''expresion : NOT expresion'''
-    p[0] = ASTNode('not', [p[2]])
+    p[0] = ASTNode('not', [p[2]], lineno=p.lineno(1), col=_col(p, 1))
 
 def p_expresion_simple_expr(p):
     '''expresion : expresion_simple'''
@@ -313,11 +336,11 @@ def p_rel_op(p):
               | GE
               | EQ
               | NE'''
-    p[0] = ASTNode('op_rel', leaf=p[1])
+    p[0] = ASTNode('op_rel', leaf=p[1], lineno=p.lineno(1), col=_col(p, 1))
 
 def p_expresion_simple_op(p):
     '''expresion_simple : expresion_simple suma_op termino'''
-    p[0] = ASTNode(p[2].leaf, [p[1], p[3]])
+    p[0] = ASTNode(p[2].leaf, [p[1], p[3]], lineno=p[2].lineno, col=p[2].col)
 
 def p_expresion_simple_term(p):
     '''expresion_simple : termino'''
@@ -328,11 +351,11 @@ def p_suma_op(p):
                | MINUS
                | INCREMENT
                | DECREMENT'''
-    p[0] = ASTNode('op', leaf=p[1])
+    p[0] = ASTNode('op', leaf=p[1], lineno=p.lineno(1), col=_col(p, 1))
 
 def p_termino_op(p):
     '''termino : termino mult_op factor'''
-    p[0] = ASTNode(p[2].leaf, [p[1], p[3]])
+    p[0] = ASTNode(p[2].leaf, [p[1], p[3]], lineno=p[2].lineno, col=p[2].col)
 
 def p_termino_factor(p):
     '''termino : factor'''
@@ -342,11 +365,11 @@ def p_mult_op(p):
     '''mult_op : TIMES
                | DIVIDE
                | MODULO'''
-    p[0] = ASTNode('op', leaf=p[1])
+    p[0] = ASTNode('op', leaf=p[1], lineno=p.lineno(1), col=_col(p, 1))
 
 def p_factor_pot(p):
     '''factor : factor POWER componente'''
-    p[0] = ASTNode("^", [p[1], p[3]])
+    p[0] = ASTNode("^", [p[1], p[3]], lineno=p.lineno(2), col=_col(p, 2))
 
 def p_factor_comp(p):
     '''factor : componente'''
@@ -354,31 +377,29 @@ def p_factor_comp(p):
 
 def p_componente_paren(p):
     '''componente : LPAREN expresion RPAREN'''
-    p[0] = ASTNode('grupo', [p[2]])
+    p[0] = ASTNode('grupo', [p[2]], lineno=p.lineno(1), col=_col(p, 1))
 
 def p_componente_numero(p):
     '''componente : NUMBER
                   | FLOAT_NUMBER'''
-    p[0] = ASTNode(str(p[1]), leaf=p[1])
+    p[0] = _hoja(p, 1)
 
 def p_componente_id(p):
     '''componente : IDENTIFIER
                   | TRUE
                   | FALSE'''
-    p[0] = ASTNode(str(p[1]), leaf=p[1])
+    p[0] = _hoja(p, 1)
 
 # Modificados en expresiones para no generar nodos intermedios de ++ y --
 def p_componente_incr(p):
     '''componente : IDENTIFIER INCREMENT
                   | INCREMENT IDENTIFIER'''
-    var_name = p[1] if p[2] == '++' else p[2]
-    p[0] = ASTNode(var_name, leaf=var_name)
+    p[0] = _hoja(p, 1 if p[2] == '++' else 2)
 
 def p_componente_decr(p):
     '''componente : IDENTIFIER DECREMENT
                   | DECREMENT IDENTIFIER'''
-    var_name = p[1] if p[2] == '--' else p[2]
-    p[0] = ASTNode(var_name, leaf=var_name)
+    p[0] = _hoja(p, 1 if p[2] == '--' else 2)
 
 def p_empty(p):
     '''empty :'''

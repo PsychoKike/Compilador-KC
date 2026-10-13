@@ -6,7 +6,7 @@ import ply.lex as lex
 tokens = (
     # Palabras reservadas
     'MAIN', 'IF', 'ELSE', 'THEN', 'END',
-    'WHILE', 'DO', 'BREAK',
+    'WHILE', 'DO', 'BREAK', 'UNTIL',
     'INT', 'FLOAT', 'BOOL',
     'TRUE', 'FALSE',
     'CIN', 'COUT',
@@ -45,7 +45,7 @@ keywords = {
     'then':  'THEN',
     'end':   'END',
     'while': 'WHILE',
-    'until': 'WHILE',   # until → tratado como while
+    'until': 'UNTIL',   # until → token propio (do ... until)
     'do':    'DO',
     'break': 'BREAK',
     'int':   'INT',
@@ -78,26 +78,31 @@ t_ASSIGN   = r'='
 
 def t_INCREMENT(t):
     r'\+\s*\+'
+    t.lexer.lineno += t.value.count('\n')
     t.value = '++'
     return t
 
 def t_DECREMENT(t):
     r'\-\s*\-'
+    t.lexer.lineno += t.value.count('\n')
     t.value = '--'
     return t
 
 def t_AND_OP(t):
     r'&\s*&'
+    t.lexer.lineno += t.value.count('\n')
     t.value = '&&'
     return t
 
 def t_OR_OP(t):
     r'\|\s*\|'
+    t.lexer.lineno += t.value.count('\n')
     t.value = '||'
     return t
 
 def t_EQ(t):
     r'==|\=\s*\='
+    t.lexer.lineno += t.value.count('\n')
     t.value = '=='
     return t
 
