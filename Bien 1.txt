@@ -1,0 +1,27 @@
+main {
+    int contador, suma, max;
+    float resultado;
+
+    contador = 0;
+    suma     = 0;
+    max      = 10;
+
+    do
+        suma = suma + contador;
+        contador = contador + 1;
+    while contador < max;
+
+    resultado = suma / max;
+    cout << "Suma: " << suma;
+    cout << "Promedio: " << resultado;
+
+    if suma == 45 then
+        cout << "Correcto";
+    end
+
+    if resultado >= 4.5 then
+        if resultado <= 5.0 then
+            cout << "En rango";
+        end
+    end
+}

@@ -79,12 +79,12 @@ def actualizar(event=None):
 def cerrar_pestana(editor_tabs):
     # Obtenemos cuántas pestañas hay
     tabs = editor_tabs.tabs()
-    
+
     if len(tabs) > 1:
         actual = editor_tabs.select()
         editor_tabs.forget(actual)
         # Después de cerrar, forzamos la actualización de coordenadas
-        actualizar() 
+        actualizar()
     else:
         from tkinter import messagebox
         messagebox.showwarning("Cerrar archivo", "No puedes cerrar todas las pestañas. Debe quedar al menos una abierta.")
@@ -172,7 +172,7 @@ def create_editor():
     # =========================
 
     crear_pestana(editor_tabs, "Nuevo archivo", "")
-    
+
     # Actualizar coordenadas iniciales
     actualizar()
 
@@ -248,7 +248,10 @@ def create_editor():
         frame_sintactico,
         frame_semantico,
         frame_hash,
-        frame_intermedio
+        frame_intermedio,
+        frame_err_sin=frame_err_sin,
+        frame_err_lex=frame_err_lex,
+        frame_err_sem=frame_err_sem,
     )
 
     # =========================
@@ -275,4 +278,4 @@ def create_editor():
 
 if __name__ == "__main__":
     create_editor()
-    
+

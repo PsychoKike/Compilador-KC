@@ -133,11 +133,13 @@ def p_sent_incr(p):
     '''sent_incr : IDENTIFIER INCREMENT SEMICOLON
                  | INCREMENT IDENTIFIER SEMICOLON'''
     p[0] = _hoja(p, 1 if p[2] == '++' else 2)
+    p[0].actualizacion, p[0].postfijo = 1, p[2] == '++'
 
 def p_sent_decr(p):
     '''sent_decr : IDENTIFIER DECREMENT SEMICOLON
                  | DECREMENT IDENTIFIER SEMICOLON'''
     p[0] = _hoja(p, 1 if p[2] == '--' else 2)
+    p[0].actualizacion, p[0].postfijo = -1, p[2] == '--'
 
 def p_asignacion(p):
     '''asignacion : IDENTIFIER ASSIGN expresion SEMICOLON'''
@@ -395,11 +397,13 @@ def p_componente_incr(p):
     '''componente : IDENTIFIER INCREMENT
                   | INCREMENT IDENTIFIER'''
     p[0] = _hoja(p, 1 if p[2] == '++' else 2)
+    p[0].actualizacion, p[0].postfijo = 1, p[2] == '++'
 
 def p_componente_decr(p):
     '''componente : IDENTIFIER DECREMENT
                   | DECREMENT IDENTIFIER'''
     p[0] = _hoja(p, 1 if p[2] == '--' else 2)
+    p[0].actualizacion, p[0].postfijo = -1, p[2] == '--'
 
 def p_empty(p):
     '''empty :'''

@@ -1,0 +1,24 @@
+main {
+    int x, y, z;
+    float promedio;
+    bool bandera;
+
+    cin >> x;
+    cin >> y;
+
+    z = x + y;
+    promedio = z / 2;
+
+    if z > 10 then
+        cout << "Mayor a 10";
+        bandera = true;
+    else
+        cout << "Menor o igual a 10";
+        bandera = false;
+    end
+
+    while x > 0
+        cout << x;
+        x = x - 1;
+    end
+}

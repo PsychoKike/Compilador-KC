@@ -202,9 +202,18 @@ Tipos del lenguaje: `int`, `float` (`real` es sinónimo), `bool`. Tipo interno a
 `error` y **no** se emiten errores adicionales por ella. El recorrido continúa con la
 siguiente sentencia.
 
-**Atributo valor.** Se calcula solo cuando todos los operandos son constantes (literales u
-operaciones entre literales). Una división entre cero constante no se evalúa (sin valor).
-Las variables no aportan valor en esta fase.
+**Atributo valor.** Se calcula de abajo hacia arriba con literales y valores conocidos
+de variables. Cada asignación válida actualiza el valor en la tabla; los usos posteriores
+recuperan ese valor. `None` se presenta como `null` cuando no existe un valor conocido,
+sin perder el tipo ni producir un error por falta de inicialización. Una división entre
+cero no se evalúa y conserva `null`. Una asignación inválida no sobrescribe el valor previo.
+
+Las dos ramas de un `if` se analizan por separado desde el mismo estado inicial. Si
+la condición es conocida, se conserva el estado de la rama seleccionada; si es desconocida,
+solo se conservan valores iguales en ambas ramas. Los ciclos se revisan una vez y las
+variables escritas en ellos se consideran desconocidas, salvo un `while` con condición
+inicial falsa. No se simula un número arbitrario de iteraciones. `cin` invalida el valor
+previo porque la entrada se conocerá durante la ejecución.
 
 ---
 

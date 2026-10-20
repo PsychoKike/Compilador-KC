@@ -536,6 +536,8 @@ def build_annotated_tree_view(frame, ast_root):
 
     def attr(node, nombre):
         valor = getattr(node, nombre, None)
+        if nombre == 'valor' and hasattr(node, 'valor') and valor is None:
+            return 'null'
         return "" if valor is None else str(valor)
 
     def insert_node(parent_id, node):
@@ -593,17 +595,19 @@ def build_symbol_table_view(frame, tabla):
         pady=6, anchor="w", padx=8
     ).pack(fill="x")
 
-    cols = ("nombre", "tipo", "direccion", "ambito", "lineas")
+    cols = ("nombre", "tipo", "valor", "direccion", "ambito", "lineas")
     tree = ttk.Treeview(frame, columns=cols, show="headings")
 
     tree.heading("nombre",    text="Nombre")
     tree.heading("tipo",      text="Tipo")
+    tree.heading("valor",     text="Valor")
     tree.heading("direccion", text="Dirección")
     tree.heading("ambito",    text="Ámbito")
     tree.heading("lineas",    text="Líneas (declaración, usos)")
 
     tree.column("nombre",    width=100, anchor="center")
     tree.column("tipo",      width=70,  anchor="center")
+    tree.column("valor",     width=80,  anchor="center")
     tree.column("direccion", width=80,  anchor="center")
     tree.column("ambito",    width=100, anchor="center")
     tree.column("lineas",    width=300, anchor="w")
@@ -615,7 +619,7 @@ def build_symbol_table_view(frame, tabla):
 
     for s in tabla.entradas:
         tree.insert("", "end", values=(
-            s.nombre, s.tipo, s.direccion, s.ambito,
+            s.nombre, s.tipo, 'null' if s.valor is None else s.valor, s.direccion, s.ambito,
             ", ".join(str(l) for l in s.lineas)
         ))
 
