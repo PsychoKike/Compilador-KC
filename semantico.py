@@ -131,6 +131,12 @@ class AnalizadorSemantico:
         # Sentencia x++; / x--; (el parser deja solo el identificador)
         if self.es_identificador(nodo):
             self.expresion(nodo)
+            # Como sentencia, mostrar el valor después de actualizar el símbolo.
+            # En expresiones, el postfijo conserva su valor previo.
+            if getattr(nodo, 'actualizacion', None) and nodo.tipo != 'error':
+                simbolo = self.tabla.buscar(nodo.leaf)
+                if simbolo is not None:
+                    nodo.valor = simbolo.valor
             return
 
         metodo = {
