@@ -2,7 +2,7 @@ import os
 import tkinter as tk
 from tkinter import Button
 from file_operations import (nuevo, abrir, guardar, guardar_como, run_command,
-                             run_semantic_analysis)
+                             run_semantic_analysis, ejecutar_tm)
 
 images = []
 
@@ -45,11 +45,10 @@ def create_buttons(button_frame, editor_tabs, mensaje, pantalla_errores,
     btn_params = dict(padx=8, pady=2, relief="raised",
                       bg="#e1e1e1", font=("Segoe UI", 9, "bold"))
 
-    # Botón Run → Léxico + Sintáctico + Semántico (llena todas las listas de errores)
-    Button(
-        button_frame,
-        image=img_run,
-        command=lambda: run_semantic_analysis(
+    # Compilación completa: léxico + sintáctico + semántico + código TM/.ci.
+    # Devuelve la ruta del .tm generado (None si hubo errores).
+    def compilar(mostrar=False, mostrar_codigo=False):
+        return run_semantic_analysis(
             editor_tabs, mensaje,
             frame_lexico, pantalla_errores,
             frame_sintactico,
@@ -57,28 +56,34 @@ def create_buttons(button_frame, editor_tabs, mensaje, pantalla_errores,
             frame_err_sin=frame_err_sin,
             frame_err_lex=frame_err_lex,
             frame_err_sem=frame_err_sem,
-            mostrar=False,
-        ),
+            mostrar=mostrar,
+            frame_intermedio=frame_intermedio,
+            mostrar_codigo=mostrar_codigo,
+        )
+
+    # Botón Run → compila todo y llena todas las listas de errores
+    Button(
+        button_frame,
+        image=img_run,
+        command=lambda: compilar(),
         **btn_params
     ).pack(side='left', padx=5)
 
-    # Botón Semántico → Léxico + Sintáctico + Semántico (árbol anotado, tabla y errores)
+    # Botón Semántico → muestra árbol anotado y errores semánticos
     tk.Button(button_frame, text="🧪 Semántico",
-              command=lambda: run_semantic_analysis(
-                  editor_tabs, mensaje,
-                  frame_lexico, pantalla_errores,
-                  frame_sintactico,
-                  frame_semantico, frame_hash,
-                  frame_err_sin=frame_err_sin,
-                  frame_err_lex=frame_err_lex,
-                  frame_err_sem=frame_err_sem,
-              ),
+              command=lambda: compilar(mostrar=True),
               **btn_params).pack(side="left", padx=2)
 
     tk.Button(button_frame, text="📋 Hash Table",
-              command=lambda: mensaje.set("Hash Table: próximamente..."),
+              command=lambda: (compilar(), frame_hash.master.select(frame_hash)),
               **btn_params).pack(side="left", padx=2)
 
+    # Botón Código Intermedio → compila y muestra el código TM y el .ci
     tk.Button(button_frame, text="⚙️ Cód. Intermedio",
-              command=lambda: mensaje.set("Código Intermedio: próximamente..."),
+              command=lambda: compilar(mostrar_codigo=True),
+              **btn_params).pack(side="left", padx=2)
+
+    # Botón Ejecutar → recompila el programa actual y lo ejecuta en la TM
+    tk.Button(button_frame, text="▶ Ejecutar TM",
+              command=lambda: ejecutar_tm(compilar(mostrar_codigo=True), mensaje),
               **btn_params).pack(side="left", padx=2)

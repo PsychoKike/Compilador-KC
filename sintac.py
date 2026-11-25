@@ -392,6 +392,15 @@ def p_componente_id(p):
                   | FALSE'''
     p[0] = _hoja(p, 1)
 
+# Menos unario: -1 se vuelve literal negativa; -x genera el nodo 'neg'
+def p_componente_neg(p):
+    '''componente : MINUS componente'''
+    hijo = p[2]
+    if isinstance(hijo.leaf, (int, float)) and not hijo.children:
+        p[0] = ASTNode(str(-hijo.leaf), leaf=-hijo.leaf, lineno=p.lineno(1), col=_col(p, 1))
+    else:
+        p[0] = ASTNode('neg', [hijo], lineno=p.lineno(1), col=_col(p, 1))
+
 # Modificados en expresiones para no generar nodos intermedios de ++ y --
 def p_componente_incr(p):
     '''componente : IDENTIFIER INCREMENT

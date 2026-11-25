@@ -1,0 +1,29 @@
+main {
+    // Ejercicio 2 (selectivo): VAL = 100 * V   si NUM = 1
+    //                                 100 ^ V   si NUM = 2
+    //                                 100 / V   si NUM = 3
+    //                                 0         cualquier otro NUM
+    // Entradas: NUM, V (enteros)
+    // Salida:   VAL
+    int num, v;
+    float val;
+
+    cin >> num;
+    cin >> v;
+
+    if num == 1 then
+        val = 100 * v;
+    else
+        if num == 2 then
+            val = 100 ^ v;
+        else
+            if num == 3 then
+                val = 100.0 / v;
+            else
+                val = 0;
+            end
+        end
+    end
+
+    cout << "VAL = " << val;
+}

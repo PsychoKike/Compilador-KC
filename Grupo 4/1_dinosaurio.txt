@@ -1,0 +1,16 @@
+main {
+    // Ejercicio 1 (secuencial): peso de libras a kilogramos y
+    // longitud de pies a metros.
+    // Entradas: peso en libras, longitud en pies
+    // Salidas:  peso en kg, longitud en m
+    float peso_lb, largo_pie, peso_kg, largo_m;
+
+    cin >> peso_lb;
+    cin >> largo_pie;
+
+    peso_kg = peso_lb * 0.453592;
+    largo_m = largo_pie * 0.3048;
+
+    cout << "Peso (kg): " << peso_kg;
+    cout << "Longitud (m): " << largo_m;
+}

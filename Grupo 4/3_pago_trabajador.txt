@@ -1,0 +1,41 @@
+main {
+    // Ejercicio 3 (selectivo): pago = sueldo + horas extra.
+    // Precio por hora extra segun categoria (Tabla 2.18):
+    //   1 -> $30, 2 -> $38, 3 -> $50, 4 -> $70
+    // Maximo 30 horas extra; categoria mayor a 4 no cobra horas extra.
+    // Entradas: sueldo, categoria, horas extra
+    // Salida:   total a pagar
+    int categoria, horas;
+    float sueldo, precio_hora, pago_extra, total;
+
+    cin >> sueldo;
+    cin >> categoria;
+    cin >> horas;
+
+    if horas > 30 then
+        horas = 30;
+    end
+
+    precio_hora = 0;
+    if categoria == 1 then
+        precio_hora = 30;
+    else
+        if categoria == 2 then
+            precio_hora = 38;
+        else
+            if categoria == 3 then
+                precio_hora = 50;
+            else
+                if categoria == 4 then
+                    precio_hora = 70;
+                end
+            end
+        end
+    end
+
+    pago_extra = precio_hora * horas;
+    total = sueldo + pago_extra;
+
+    cout << "Pago por horas extra: " << pago_extra;
+    cout << "Total a pagar: " << total;
+}

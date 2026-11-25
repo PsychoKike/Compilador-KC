@@ -4,8 +4,12 @@ from lexer import reset_lexer
 from test_lexer import test_lexer
 from sintac import calculate_levels, parse_code
 from semantico import analizar_semantica
+from cgen import generar_codigo_tm
+from intermedio import generar_codigo_intermedio
 from tab_widget import TabWithCloseButton
 import tkinter as tk
+import os
+import subprocess
 
 ruta_archivos = {}
 
@@ -392,6 +396,7 @@ def run_command(editor_tabs, mensaje, frame_lexico,
         frame_err_sin=frame_err_sin,
         lex_had_errors=bool(lex_errors)
     )
+    return list(lex_errors)
 
 
 def run_syntax_analysis(mensaje, texto, frame_sintactico,
@@ -432,20 +437,23 @@ def run_semantic_analysis(editor_tabs, mensaje, frame_lexico,
                           pantalla_errores, frame_sintactico,
                           frame_semantico, frame_hash,
                           frame_err_sin=None, frame_err_lex=None,
-                          frame_err_sem=None, mostrar=True):
+                          frame_err_sem=None, mostrar=True,
+                          frame_intermedio=None, mostrar_codigo=False):
     """
     Ejecuta léxico + sintáctico (refresca sus paneles) y después el
     análisis semántico sobre una copia profunda del AST.
     mostrar=True cambia a las pestañas del resultado semántico.
+    Con frame_intermedio, si no hay errores genera los archivos .tm y .ci
+    y devuelve la ruta del .tm (None si no se generó código).
     """
     texto = obtener_texto_actual(editor_tabs)
     if not texto:
         mensaje.set("No hay archivo abierto")
-        return
+        return None
 
-    run_command(editor_tabs, mensaje, frame_lexico, pantalla_errores,
-                frame_sintactico, frame_err_sin=frame_err_sin,
-                frame_err_lex=frame_err_lex)
+    lex_errors = run_command(editor_tabs, mensaje, frame_lexico, pantalla_errores,
+                             frame_sintactico, frame_err_sin=frame_err_sin,
+                             frame_err_lex=frame_err_lex)
 
     mensaje.set("Ejecutando análisis semántico...")
 
@@ -472,6 +480,138 @@ def run_semantic_analysis(editor_tabs, mensaje, frame_lexico,
         mensaje.set(f"⚠️  Semántico sin errores sobre un AST con errores sintácticos | {simbolos} símbolos")
     else:
         mensaje.set(f"✅ Análisis semántico sin errores | {simbolos} símbolos en la tabla")
+
+    if frame_intermedio is None:
+        return None
+
+    # ── GENERACIÓN DE CÓDIGO (solo con el árbol válido) ──
+    errores = {"léxicos": len(lex_errors), "sintácticos": len(sin_errors),
+               "semánticos": len(sem_errors)}
+    if any(errores.values()):
+        detalle = ", ".join(f"{n} {fase}" for fase, n in errores.items() if n)
+        build_code_view(frame_intermedio, None, None, None,
+                        aviso=f"No se generó código: el programa tiene errores ({detalle}).")
+        mensaje.set(f"⚠️  Sin código TM: corrija los errores ({detalle})")
+        if mostrar_codigo:
+            frame_intermedio.master.select(frame_intermedio)
+        return None
+
+    ruta_tm, ruta_ci = rutas_de_salida(editor_tabs)
+    nombre = os.path.basename(ruta_tm)
+    emisor = generar_codigo_tm(anotado, tabla, nombre)
+    codigo_ci = generar_codigo_intermedio(anotado)
+    with open(ruta_tm, 'w', encoding='utf-8') as archivo:
+        archivo.write(emisor.texto())
+    with open(ruta_ci, 'w', encoding='utf-8') as archivo:
+        archivo.write(codigo_ci)
+
+    build_code_view(frame_intermedio, emisor, codigo_ci, ruta_tm)
+    if mostrar_codigo:
+        frame_intermedio.master.select(frame_intermedio)
+    mensaje.set(f"✅ Compilación completa | {len(emisor.listado())} instrucciones TM en {nombre}")
+    return ruta_tm
+
+
+# ============================================
+# GENERACIÓN DE CÓDIGO: ARCHIVOS Y EJECUCIÓN EN TM
+# ============================================
+
+DIR_PROYECTO = os.path.dirname(os.path.abspath(__file__))
+TM_EXE       = os.path.join(DIR_PROYECTO, "tm", "tm.exe")
+
+
+def rutas_de_salida(editor_tabs):
+    """
+    programa.tm y programa.ci junto al fuente; si la pestaña no se ha
+    guardado, en la carpeta salida/ del proyecto con el nombre de la pestaña.
+    """
+    tab = editor_tabs.select()
+    ruta = ruta_archivos.get(str(tab))
+    if ruta:
+        base = os.path.splitext(ruta)[0]
+    else:
+        carpeta = os.path.join(DIR_PROYECTO, "salida")
+        os.makedirs(carpeta, exist_ok=True)
+        nombre = editor_tabs.tab(tab, "text").strip() or "programa"
+        nombre = os.path.splitext(nombre)[0].replace(" ", "_")
+        base = os.path.join(carpeta, nombre)
+    return base + ".tm", base + ".ci"
+
+
+def ejecutar_tm(ruta_tm, mensaje):
+    """Abre una consola con el simulador TM ejecutando el .tm recién generado."""
+    if not ruta_tm:
+        return
+    if not os.path.exists(TM_EXE):
+        mensaje.set(f"⚠️  No se encontró el simulador: {TM_EXE}")
+        return
+    subprocess.Popen([TM_EXE, ruta_tm, "-g"],
+                     cwd=os.path.dirname(ruta_tm),
+                     creationflags=subprocess.CREATE_NEW_CONSOLE)
+    mensaje.set(f"▶ Ejecutando {os.path.basename(ruta_tm)} en la TM (ver consola)")
+
+
+def build_code_view(frame, emisor, codigo_ci, ruta_tm, aviso=None):
+    """Pestaña 'Código Intermedio': listado TM y código de tres direcciones."""
+    for child in frame.winfo_children():
+        child.destroy()
+
+    color_bg = "#1e1e2e"
+    titulo = ("⚙️  Código Intermedio — instrucciones TM generadas"
+              + (f"  ({os.path.basename(ruta_tm)})" if ruta_tm else ""))
+    tk.Label(frame, text=titulo, font=("Consolas", 10, "bold"),
+             bg=color_bg, fg="#cdd6f4", pady=6, anchor="w", padx=8).pack(fill="x")
+
+    if aviso:
+        tk.Label(frame, text=aviso, font=("Consolas", 10),
+                 fg="#d20f39", anchor="w", padx=8, pady=8).pack(fill="x")
+        return
+
+    tk.Label(frame, text=f"Archivos: {ruta_tm}  ·  {os.path.splitext(ruta_tm)[0]}.ci",
+             font=("Consolas", 8), anchor="w", padx=8).pack(fill="x")
+
+    pestanas = ttk.Notebook(frame)
+    pestanas.pack(fill="both", expand=True)
+
+    # ── Código TM (.tm) ─────────────────────────
+    frame_tm = tk.Frame(pestanas)
+    pestanas.add(frame_tm, text="Código TM (.tm)")
+    cols = ("dir", "instr", "operandos", "comentario")
+    tree = ttk.Treeview(frame_tm, columns=cols, show="headings")
+    tree.heading("dir",        text="Dirección")
+    tree.heading("instr",      text="Instrucción")
+    tree.heading("operandos",  text="Operandos")
+    tree.heading("comentario", text="Comentario")
+    tree.column("dir",        width=70,  anchor="center")
+    tree.column("instr",      width=80,  anchor="center")
+    tree.column("operandos",  width=110, anchor="w")
+    tree.column("comentario", width=360, anchor="w")
+    vsb = tk.Scrollbar(frame_tm, orient="vertical", command=tree.yview)
+    tree.configure(yscrollcommand=vsb.set)
+    vsb.pack(side="right", fill="y")
+    tree.pack(fill="both", expand=True)
+    tree.tag_configure("salto", foreground="#1e66f5")
+    tree.tag_configure("io",    foreground="#40a02b")
+    for loc, op, operandos, comentario in emisor.listado():
+        tag = ("salto",) if op.startswith("J") or (op == "LDA" and operandos.startswith("7,")) \
+            else ("io",) if op in ("IN", "OUT") else ()
+        tree.insert("", "end", values=(loc, op, operandos, comentario), tags=tag)
+
+    # ── Archivo .tm completo (como lo lee la TM) ──
+    frame_txt = tk.Frame(pestanas)
+    pestanas.add(frame_txt, text="Archivo .tm")
+    texto_tm = tk.Text(frame_txt, font=("Consolas", 9), wrap="none")
+    texto_tm.insert("1.0", emisor.texto())
+    texto_tm.config(state="disabled")
+    texto_tm.pack(fill="both", expand=True)
+
+    # ── Código intermedio de tres direcciones (.ci) ──
+    frame_ci = tk.Frame(pestanas)
+    pestanas.add(frame_ci, text="Código intermedio de tres direcciones (.ci)")
+    texto_ci = tk.Text(frame_ci, font=("Consolas", 10), wrap="none")
+    texto_ci.insert("1.0", codigo_ci)
+    texto_ci.config(state="disabled")
+    texto_ci.pack(fill="both", expand=True)
 
 
 # ============================================

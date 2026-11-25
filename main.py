@@ -107,7 +107,7 @@ def create_editor():
     analisis_tabs.add(frame_sintactico, text="Árbol Sintáctico")
     analisis_tabs.add(frame_semantico,  text="Semántico")
     analisis_tabs.add(frame_hash,       text="Hash Table")
-    analisis_tabs.add(frame_intermedio, text="Cód. Intermedio")
+    analisis_tabs.add(frame_intermedio, text="Código Intermedio")
     analisis_tabs.pack(fill="both", expand=True)
 
     # ── MENSAJE DE ESTADO ───────────────────────

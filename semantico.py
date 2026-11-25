@@ -334,6 +334,16 @@ class AnalizadorSemantico:
         if op == 'grupo':
             nodo.tipo, nodo.valor = hijos[0].tipo, hijos[0].valor
             return
+        if op == 'neg':
+            # Menos unario: solo con operandos numéricos, conserva el tipo
+            tipo = hijos[0].tipo
+            if tipo not in ('int', 'float'):
+                nodo.tipo = 'error'
+                self.error('SEM05', nodo, f"operador '-' unario incompatible con {tipo}")
+                return
+            valor = hijos[0].valor
+            nodo.tipo, nodo.valor = tipo, (-valor if valor is not None else None)
+            return
         tipos = [h.tipo for h in hijos]
         numericos = all(t in ('int', 'float') for t in tipos)
         aritmeticos = {'+': operator.add, '-': operator.sub, '*': operator.mul,
